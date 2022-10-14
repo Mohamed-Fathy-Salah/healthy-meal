@@ -2,13 +2,19 @@ import { createApolloServer } from "../server";
 import { ApolloServer } from "apollo-server-express";
 import { Connection, createConnection, getConnectionOptions } from "typeorm";
 
+declare global {
+  var url: string;
+}
+
 let server: ApolloServer, db: Connection;
 
 beforeAll(async () => {
   const options = await getConnectionOptions("testing");
   db = await createConnection({ ...options, name: "default" });
 
-  server = await createApolloServer(3000);
+  const port = 3000;
+  server = await createApolloServer(port);
+  global.url = `http://localhost:${port}/graphql`;
 });
 
 afterEach(async () => {
