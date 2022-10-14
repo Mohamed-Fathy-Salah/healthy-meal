@@ -1,5 +1,12 @@
 module.exports = [
   {
+    name: "testing",
+    type: "better-sqlite3",
+    database: ":memory:",
+    entities: ["src/entity/**/*.ts"],
+    synchronize: true,
+  },
+  {
     name: "development",
     type: "sqlite",
     database: "database.sqlite",
@@ -11,8 +18,8 @@ module.exports = [
     cli: {
       entitiesDir: "src/entity",
       migrationsDir: "src/migration",
-      subscribersDir: "src/subscriber"
-    }
+      subscribersDir: "src/subscriber",
+    },
   },
   {
     name: "production",
@@ -26,7 +33,7 @@ module.exports = [
     cli: {
       entitiesDir: "dist/entity",
       migrationsDir: "dist/migration",
-      subscribersDir: "dist/subscriber"
-    }
-  }
+      subscribersDir: "dist/subscriber",
+    },
+  },
 ];
