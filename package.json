@@ -37,8 +37,8 @@
     "typeorm": "^0.2.45"
   },
   "scripts": {
-    "start": "nodemon --exec ts-node src/index.ts",
-    "dev": "rm database.sqlite && npm run start",
+    "start": "ts-node src/index.ts",
+    "dev": "rm database.sqlite && nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "test": "jest --runInBand --force-exit"
   }
