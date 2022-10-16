@@ -8,9 +8,7 @@ import { Context } from "apollo-server-core";
 
 const currentUserId = (ctx: Context): never | string => {
   //@ts-ignore
-  console.log("currentUser:", ctx.req.session.userId);
-  //@ts-ignore
-  return jwt.verify(ctx.req.session.userId, "asdf");
+  return jwt.verify(ctx.req.session.jwt, "asdf")["id"];
 };
 
 @Resolver()
@@ -18,6 +16,36 @@ export class UserResolver {
   @Query(() => User)
   async getUser(@Arg("id", () => String) id: string) {
     return await User.findOne(id);
+  }
+
+  @Query(() => [User])
+  async getFollowers(@Ctx() ctx: Context) {
+    const id = currentUserId(ctx);
+    const res = (
+      await Follow.find({
+        relations: ["user"],
+        where: { user_id: id },
+        select: ["user"],
+      })
+    ).map((v) => {
+      return { ...v.user };
+    });
+    return res;
+  }
+
+  @Query(() => [User])
+  async getFollowing(@Ctx() ctx: Context) {
+    const id = currentUserId(ctx);
+    const res = (
+      await Follow.find({
+        relations: ["follower"],
+        where: { follower_id: id },
+        select: ["follower"],
+      })
+    ).map((v) => {
+      return { ...v.follower };
+    });
+    return res;
   }
 
   @Query(() => User)
@@ -43,7 +71,6 @@ export class UserResolver {
   ) {
     try {
       const id = currentUserId(ctx);
-      console.log("currentUser:", id);
       await Follow.insert({ user_id: userId, follower_id: id });
       return true;
     } catch (e) {
@@ -62,10 +89,10 @@ export class UserResolver {
 
     const userId = createdUser.identifiers[0].user_id;
 
-    const userJWT = jwt.sign(userId, "asdf");
+    const userJWT = jwt.sign({ id: userId }, "asdf");
 
     //@ts-ignore
-    ctx.req.session.userId = userJWT;
+    ctx.req.session.jwt = userJWT;
 
     return userId;
   }
@@ -80,10 +107,10 @@ export class UserResolver {
 
     const userId = createdUser.identifiers[0].user_id;
 
-    const userJWT = jwt.sign(userId, "asdf");
+    const userJWT = jwt.sign({ id: userId }, "asdf");
 
     //@ts-ignore
-    ctx.req.session.userId = userJWT;
+    ctx.req.session.jwt = userJWT;
 
     return userId;
   }

@@ -6,7 +6,9 @@ import {
   JoinColumn,
 } from "typeorm";
 import User from "./user";
+import {Field, ObjectType} from 'type-graphql';
 
+@ObjectType()
 @Entity()
 export default class Follow extends BaseEntity {
   @PrimaryColumn("uuid")
@@ -14,11 +16,13 @@ export default class Follow extends BaseEntity {
   @PrimaryColumn("uuid")
   follower_id: string;
 
-  @ManyToOne(() => User, (user) => user.user_id)
+  @Field()
+  @ManyToOne(() => User, (user) => user.user_id, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   user: User;
 
-  @ManyToOne(() => User, (user) => user.user_id)
+  @Field()
+  @ManyToOne(() => User, (user) => user.user_id, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
   follower: User;
 }
