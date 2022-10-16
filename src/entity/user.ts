@@ -3,7 +3,7 @@ import { Field, ObjectType } from "type-graphql";
 
 @ObjectType()
 @Entity()
-export class User extends BaseEntity {
+export default class User extends BaseEntity {
   @Field()
   @PrimaryGeneratedColumn("uuid")
   user_id: string;
@@ -17,29 +17,32 @@ export class User extends BaseEntity {
   @Column("text", { unique: true })
   email: string;
 
-  @Column("text", {select: false})
+  @Column("text", { select: false })
   password: string;
 
   @Field()
-  @Column("date", {nullable: true})
+  @Column("date", { nullable: true })
   date_of_birth: string;
 
   @Field()
   //todo: char
-  @Column("text", {nullable: true})
+  @Column("text", { nullable: true })
   gender: string;
 
   @Field()
   //todo: numeric(4,1)
-  @Column({nullable: true})
+  @Column({ nullable: true })
   weight: number;
 
   @Field()
   //todo: numeric(4,1)
-  @Column({nullable: true})
+  @Column({ nullable: true })
   height: number;
 
   @Field()
-  @Column("uuid", {nullable: true})
-  photo_id: string;
+  @Column("text", {
+    default:
+      "https://upload.wikimedia.org/wikipedia/commons/7/72/Default-welcomer.png?20180610185859",
+  })
+  photo: string;
 }

@@ -1,8 +1,17 @@
 import { Query, Resolver, Arg, Mutation, Ctx } from "type-graphql";
-import { User } from "../entity/User";
+import User from "../entity/user";
+import Follow from "../entity/follow";
 import { Password } from "../services/password";
 import jwt from "jsonwebtoken";
 import { UserSignup, UserSignin } from "./types/user";
+import { Context } from "apollo-server-core";
+
+const currentUserId = (ctx: Context): never | string => {
+  //@ts-ignore
+  console.log("currentUser:", ctx.req.session.userId);
+  //@ts-ignore
+  return jwt.verify(ctx.req.session.userId, "asdf");
+};
 
 @Resolver()
 export class UserResolver {
@@ -12,11 +21,9 @@ export class UserResolver {
   }
 
   @Query(() => User)
-  //@ts-ignore
-  async getCurrentUser(@Ctx() { req }) {
+  async getCurrentUser(@Ctx() ctx: Context) {
     try {
-      //@ts-ignore
-      const id = jwt.verify(req.session.user, "asdf")["id"];
+      const id = currentUserId(ctx);
       return await User.findOne(id);
     } catch (e) {
       console.error("---->", e);
@@ -29,52 +36,54 @@ export class UserResolver {
     return await User.find();
   }
 
+  @Mutation(() => Boolean)
+  async follow(
+    @Arg("user_id", () => String) userId: string,
+    @Ctx() ctx: Context
+  ) {
+    try {
+      const id = currentUserId(ctx);
+      console.log("currentUser:", id);
+      await Follow.insert({ user_id: userId, follower_id: id });
+      return true;
+    } catch (e) {
+      console.error("---->", e);
+    }
+    return false;
+  }
+
   @Mutation(() => String)
-  //@ts-ignore
   async signup(
     @Arg("user", () => UserSignup) user: UserSignup,
-    //@ts-ignore
-    @Ctx() { req }
+    @Ctx() ctx: Context
   ) {
     user.password = await Password.toHash(user.password);
     const createdUser = await User.insert(user);
 
     const userId = createdUser.identifiers[0].user_id;
 
-    const userJWT = jwt.sign(
-      {
-        id: userId,
-        email: user.email,
-      },
-      "asdf"
-    );
+    const userJWT = jwt.sign(userId, "asdf");
 
-    req.session.user = userJWT;
+    //@ts-ignore
+    ctx.req.session.userId = userJWT;
 
     return userId;
   }
 
   @Mutation(() => String)
-  //@ts-ignore
   async signin(
     @Arg("user", () => UserSignin) user: UserSignin,
-    //@ts-ignore
-    @Ctx() { req }
+    @Ctx() ctx: Context
   ) {
     user.password = await Password.toHash(user.password);
     const createdUser = await User.insert(user);
 
     const userId = createdUser.identifiers[0].user_id;
 
-    const userJWT = jwt.sign(
-      {
-        id: userId,
-        email: user.email,
-      },
-      "asdf"
-    );
+    const userJWT = jwt.sign(userId, "asdf");
 
-    req.session.user = userJWT;
+    //@ts-ignore
+    ctx.req.session.userId = userJWT;
 
     return userId;
   }
