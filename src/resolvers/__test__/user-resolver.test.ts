@@ -7,27 +7,11 @@ const query = {
   },
 };
 
-const mutation = {
-  signup: {
-    query: `mutation { signup(user: {name: "name", email: "test@test.com", password: "password"}) }`,
-  },
-};
-
-it.todo("wrong credentials");
-it.todo("correct credentials");
-
 it("getUsers is empty", async () => {
   const res = await request(global.url).post("/").send(query.getUsers);
 
   expect(res.error).toBeFalsy();
   expect(res.body.data.getUsers).toHaveLength(0);
-});
-
-it("signup success", async () => {
-  const res = await request(global.url).post("/").send(mutation.signup);
-
-  expect(res.error).toBeFalsy();
-  expect(res.body.data.signup).toBeDefined();
 });
 
 it("follow new user", async () => {
