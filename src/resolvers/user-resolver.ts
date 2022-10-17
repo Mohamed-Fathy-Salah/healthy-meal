@@ -29,14 +29,14 @@ export class UserResolver {
     @Arg("user", () => UserData) userData: UserData,
     @Ctx() { userId }: Context
   ) {
-    await User.update(userId, userData);
-    return true;
+    const { affected } = await User.update(userId, userData);
+    return affected! > 0;
   }
 
   @Mutation(() => Boolean)
   @UseMiddleware(currentUser)
   async deleteUser(@Ctx() { userId }: Context) {
-    await User.delete(userId);
-    return true;
+    const { affected } = await User.delete(userId);
+    return affected! > 0;
   }
 }
