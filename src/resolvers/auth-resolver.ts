@@ -18,12 +18,7 @@ export class AuthResolver {
   @Query(() => User)
   @UseMiddleware(currentUser)
   async getCurrentUser(@Ctx() { userId }: Context) {
-    try {
-      return await User.findOne(userId);
-    } catch (e) {
-      console.error("---->", e);
-    }
-    return null;
+    return await User.findOne(userId);
   }
 
   @Mutation(() => String)

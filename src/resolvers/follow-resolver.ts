@@ -49,16 +49,27 @@ export default class FollowResolver {
     @Arg("user_id", () => String) userId: string,
     @Ctx() ctx: Context
   ) {
-    try {
-      const id = ctx.userId;
-      await Follow.insert({ user_id: userId, follower_id: id });
-      return true;
-    } catch (e) {
-      console.error("---->", e);
-    }
-    return false;
+    const id = ctx.userId;
+    if (id === userId) return false;
+    const { identifiers } = await Follow.insert({
+      user_id: userId,
+      follower_id: id,
+    });
+    return identifiers?.length > 0;
   }
 
-  // todo: unfollow
+  @Mutation(() => Boolean)
+  @UseMiddleware(currentUser)
+  async unfollow(
+    @Arg("user_id", () => String) userId: string,
+    @Ctx() ctx: Context
+  ) {
+    const id = ctx.userId;
+    const { affected } = await Follow.delete({
+      user_id: userId,
+      follower_id: id,
+    });
+    return affected! > 0;
+  }
   // todo: add count field to get followers, following
 }
