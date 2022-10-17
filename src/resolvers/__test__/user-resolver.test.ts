@@ -1,5 +1,5 @@
-import User from "../../entity/user";
 import request from "supertest";
+import User from "../../entity/user";
 
 const query = {
   getUsers: {
@@ -7,79 +7,25 @@ const query = {
   },
 };
 
-it("getUsers is empty", async () => {
+it("getUsers", async () => {
+  const N = 5;
+  for (let i = 0; i < N; i++)
+    await User.insert({ email: `test${i}@test.com`, password: "123345" });
+
   const res = await request(global.url).post("/").send(query.getUsers);
 
   expect(res.error).toBeFalsy();
-  expect(res.body.data.getUsers).toHaveLength(0);
+  expect(res.body.data.getUsers).toHaveLength(N);
 });
 
-it("follow new user", async () => {
-  const user1 = (
-    await User.insert({
-      name: "name1",
-      email: "email1@test.com",
-      password: "123456",
-    })
-  ).identifiers[0].user_id;
+it.todo("get user with id success");
+it.todo("get user that does not exist");
 
-  const user2 = (
-    await User.insert({
-      name: "name2",
-      email: "email2@test.com",
-      password: "123456",
-    })
-  ).identifiers[0].user_id;
+it.todo("update user that does not exist");
+it.todo("update user with out login");
+it.todo("update user with valid data");
+it.todo("update user with unvalid data");
 
-  const follow = `mutation{follow(user_id: "${user2}")}`;
-
-  const res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user1))
-    .send({ query: follow });
-
-  expect(res.error).toBeFalsy();
-  expect(res.body.data.follow).toBeTruthy();
-});
-
-it("get number of following users and followers", async () => {
-  const N = 5;
-  const arr = [];
-  for (let i = 0; i < N; i++) {
-    arr.push(
-      (
-        await User.insert({
-          name: `name${i}`,
-          email: `test${i}@test.com`,
-          password: "123456",
-        })
-      ).identifiers[0].user_id
-    );
-    for (let j = 0; j < i; j++) {
-      const res = await request(global.url)
-        .post("/")
-        .set("Cookie", global.signin(arr[i]))
-        .send({ query: `mutation{follow(user_id: "${arr[j]}")}` });
-      expect(res.error).toBeFalsy();
-      expect(res.body.data.follow).toBeTruthy();
-    }
-
-    const res = await request(global.url)
-      .post("/")
-      .set("Cookie", global.signin(arr[i]))
-      .send({ query: `query{ getFollowing{ user_id }}` });
-
-    expect(res.error).toBeFalsy();
-    expect(res.body.data.getFollowing).toHaveLength(i);
-  }
-
-  for (let i = 0; i < N; i++) {
-    const res = await request(global.url)
-      .post("/")
-      .set("Cookie", global.signin(arr[i]))
-      .send({ query: "query{ getFollowers{ user_id }}" });
-
-    expect(res.error).toBeFalsy();
-    expect(res.body.data.getFollowers).toHaveLength(N - i - 1);
-  }
-});
+it.todo("delete user that does not exist")
+it.todo("delete user without login")
+it.todo("delete user")
