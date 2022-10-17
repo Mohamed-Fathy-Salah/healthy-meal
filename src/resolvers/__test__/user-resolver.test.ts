@@ -2,8 +2,10 @@ import request from "supertest";
 import User from "../../entity/user";
 
 const query = {
-  getUsers: {
-    query: `query { getUsers{ user_id, name, email } }`,
+  getUsers: () => {
+    return {
+      query: `query { getUsers{ user_id, email } }`,
+    };
   },
 };
 
@@ -26,6 +28,6 @@ it.todo("update user with out login");
 it.todo("update user with valid data");
 it.todo("update user with unvalid data");
 
-it.todo("delete user that does not exist")
-it.todo("delete user without login")
-it.todo("delete user")
+it.todo("delete user that does not exist");
+it.todo("delete user without login");
+it.todo("delete user");

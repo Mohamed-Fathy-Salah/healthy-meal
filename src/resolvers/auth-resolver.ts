@@ -55,10 +55,13 @@ export class AuthResolver {
       throw new Error("wrong creds");
     }
 
-    if (!(await Password.compare(existingUser.password, user.password))) {
+    const areEqual = await Password.compare(
+      existingUser.password,
+      user.password
+    );
+    if (!areEqual) {
       throw new Error("wrong creds");
     }
-
     const userJWT = jwt.sign({ id: existingUser.user_id }, "asdf");
 
     //@ts-ignore
