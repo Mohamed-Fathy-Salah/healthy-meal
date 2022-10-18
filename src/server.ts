@@ -5,6 +5,7 @@ import cookieSession from "cookie-session";
 import AuthResolver from "./resolvers/auth-resolver";
 import UserResolver from "./resolvers/user-resolver";
 import FollowResolver from "./resolvers/follow-resolver";
+import MealResolver from "./resolvers/meal-resolver";
 
 export const createApolloServer = async (port: number | string) => {
   const app = express();
@@ -15,7 +16,7 @@ export const createApolloServer = async (port: number | string) => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [AuthResolver, UserResolver, FollowResolver],
+      resolvers: [AuthResolver, UserResolver, FollowResolver, MealResolver],
       validate: true,
     }),
     context: ({ req, res }) => ({ req, res }),

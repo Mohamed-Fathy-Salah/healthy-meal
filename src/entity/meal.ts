@@ -4,6 +4,7 @@ import {
   Column,
   BaseEntity,
   ManyToOne,
+  JoinColumn,
 } from "typeorm";
 import { Field, ObjectType } from "type-graphql";
 import User from "./user";
@@ -52,8 +53,13 @@ export default class Meal extends BaseEntity {
   @Column("text")
   prep_time: string;
 
+  @Field()
+  @Column("uuid")
+  user_id: string;
+
   @Field(() => User)
   @ManyToOne(() => User, (user) => user.meals, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
   user: User;
 
   @Field()
@@ -61,6 +67,6 @@ export default class Meal extends BaseEntity {
   steps: string;
 
   @Field()
-  @Column("text")
+  @Column("text", { default: "pending" })
   status: string;
 }

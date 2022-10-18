@@ -21,10 +21,10 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  const tables: [] = await db.query(
-    "select name from sqlite_master where type='table'"
-  );
-
+  //const tables: [] = await db.query(
+  //"select name from sqlite_master where type='table'"
+  //);
+  const tables = ["user", "follow", "meal"].map((v) => ({ name: v }));
   tables.forEach(async ({ name }) => {
     await db.query(`DELETE FROM ${name};`);
   });
