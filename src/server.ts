@@ -1,9 +1,9 @@
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
-import { UserResolver } from "./resolvers/user-resolver";
 import cookieSession from "cookie-session";
-import { AuthResolver } from "./resolvers/auth-resolver";
+import AuthResolver from "./resolvers/auth-resolver";
+import UserResolver from "./resolvers/user-resolver";
 import FollowResolver from "./resolvers/follow-resolver";
 
 export const createApolloServer = async (port: number | string) => {
@@ -15,7 +15,7 @@ export const createApolloServer = async (port: number | string) => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [UserResolver, AuthResolver, FollowResolver],
+      resolvers: [AuthResolver, UserResolver, FollowResolver],
       validate: true,
     }),
     context: ({ req, res }) => ({ req, res }),

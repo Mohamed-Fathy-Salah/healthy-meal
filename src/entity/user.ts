@@ -1,5 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, BaseEntity } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BaseEntity,
+  OneToMany,
+} from "typeorm";
 import { Field, ObjectType } from "type-graphql";
+import Meal from "./meal";
 
 @ObjectType()
 @Entity()
@@ -9,7 +16,6 @@ export default class User extends BaseEntity {
   user_id: string;
 
   @Field()
-  //todo: varchar(20)
   @Column("text")
   name: string;
 
@@ -25,17 +31,14 @@ export default class User extends BaseEntity {
   date_of_birth: string;
 
   @Field()
-  //todo: char
   @Column("text", { nullable: true })
   gender: string;
 
   @Field()
-  //todo: numeric(4,1)
   @Column({ nullable: true })
   weight: number;
 
   @Field()
-  //todo: numeric(4,1)
   @Column({ nullable: true })
   height: number;
 
@@ -45,4 +48,8 @@ export default class User extends BaseEntity {
       "https://upload.wikimedia.org/wikipedia/commons/7/72/Default-welcomer.png?20180610185859",
   })
   photo: string;
+
+  @Field()
+  @OneToMany(() => Meal, (meal) => meal.user)
+  meals: Meal[];
 }

@@ -14,7 +14,7 @@ import { currentUser } from "../middlewares/current-user";
 import Context from "../context";
 
 @Resolver()
-export class AuthResolver {
+export default class AuthResolver {
   @Query(() => User)
   @UseMiddleware(currentUser)
   async getCurrentUser(@Ctx() { userId }: Context) {

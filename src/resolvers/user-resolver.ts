@@ -12,7 +12,7 @@ import { currentUser } from "../middlewares/current-user";
 import { UserData } from "./types/user";
 
 @Resolver()
-export class UserResolver {
+export default class UserResolver {
   @Query(() => [User])
   async getUsers() {
     return await User.find();
