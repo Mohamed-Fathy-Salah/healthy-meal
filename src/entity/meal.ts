@@ -48,10 +48,11 @@ export default class Meal extends BaseEntity {
   carb: number;
 
   @Field()
-  @Column("interval")
+  //todo: interval
+  @Column("text")
   prep_time: string;
 
-  @Field()
+  @Field(() => User)
   @ManyToOne(() => User, (user) => user.meals, { onDelete: "CASCADE" })
   user: User;
 

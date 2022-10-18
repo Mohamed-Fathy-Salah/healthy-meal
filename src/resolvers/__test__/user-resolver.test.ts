@@ -1,3 +1,4 @@
+import Follow from "../../entity/follow";
 import request from "supertest";
 import User from "../../entity/user";
 import { UserData } from "../types/user";
@@ -139,4 +140,38 @@ it("delete user", async () => {
   expect(body.data.deleteUser).toBeTruthy();
   const res = await User.findOne(user.user_id);
   expect(res).toBeUndefined();
+});
+
+it("delete follow when user is deleted", async () => {
+  const user1 = (await User.insert({ ...userData })).identifiers[0].user_id;
+  const user2 = (await User.insert({ ...userData, email: "test2@test.com" }))
+    .identifiers[0].user_id;
+
+  await Follow.insert({ user_id: user1, follower_id: user2 });
+
+  await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user1))
+    .send(mutation.deleteUser());
+
+  const follow = await Follow.findOne({ user_id: user1, follower_id: user2 });
+
+  expect(follow).toBeUndefined();
+});
+
+it("delete follow when follower is deleted", async () => {
+  const user1 = (await User.insert({ ...userData })).identifiers[0].user_id;
+  const user2 = (await User.insert({ ...userData, email: "test2@test.com" }))
+    .identifiers[0].user_id;
+
+  await Follow.insert({ user_id: user1, follower_id: user2 });
+
+  await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user2))
+    .send(mutation.deleteUser());
+
+  const follow = await Follow.findOne({ user_id: user1, follower_id: user2 });
+
+  expect(follow).toBeUndefined();
 });
