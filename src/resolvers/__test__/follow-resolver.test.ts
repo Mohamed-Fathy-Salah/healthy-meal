@@ -9,32 +9,33 @@ const userData = {
 };
 const query = {
   getFollowing: () => {
-    return { query: `query{ getFollowing{ user_id }}` };
+    return { query: `query{ getFollowing{ name }}` };
   },
   getFollowers: () => {
-    return { query: `query{ getFollowers{ user_id }}` };
+    return { query: `query{ getFollowers{ name }}` };
   },
 };
 const mutation = {
-  follow: (id: string) => {
+  follow: (email: string) => {
     return {
-      query: "mutation follow($user_id: String!){follow(user_id: $user_id)}",
-      variables: { user_id: id },
+      query: "mutation follow($email: String!){follow(email: $email)}",
+      variables: { email },
     };
   },
-  unfollow: (id: string) => {
+  unfollow: (email: string) => {
     return {
-      query:
-        "mutation unfollow($user_id: String!){unfollow(user_id: $user_id)}",
-      variables: { user_id: id },
+      query: "mutation unfollow($email: String!){unfollow(email: $email)}",
+      variables: { email },
     };
   },
 };
 
 it("follow with out login", async () => {
-  const user = (await User.insert({ ...userData })).identifiers[0].user_id;
+  await User.insert({ ...userData });
 
-  const res = await request(global.url).post("/").send(mutation.follow(user));
+  const res = await request(global.url)
+    .post("/")
+    .send(mutation.follow(userData.email));
 
   expect(res.body.errors).toBeDefined();
 });
@@ -45,27 +46,26 @@ it("follow non existing user or self follow", async () => {
   let res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(userId))
-    .send(mutation.follow("asdfsdf"));
+    .send(mutation.follow("blah@blah.com"));
 
-  expect(res.body.errors).toBeDefined();
+  expect(res.body.data.follow).toBeFalsy();
 
   res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(userId))
-    .send(mutation.follow(userId));
+    .send(mutation.follow(userData.email));
 
   expect(res.body.data.follow).toBeFalsy();
 });
 
 it("follow new user", async () => {
   const user1 = (await User.insert({ ...userData })).identifiers[0].user_id;
-  const user2 = (await User.insert({ ...userData, email: "test1@test.com" }))
-    .identifiers[0].user_id;
+  await User.insert({ ...userData, email: "test1@test.com" });
 
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user1))
-    .send(mutation.follow(user2));
+    .send(mutation.follow("test1@test.com"));
 
   expect(res.body.data.follow).toBeTruthy();
 });
@@ -82,8 +82,8 @@ it("get number of following users and followers", async () => {
       const res = await request(global.url)
         .post("/")
         .set("Cookie", global.signin(arr[i]))
-        .send(mutation.follow(arr[j]));
-      expect(res.error).toBeFalsy();
+        .send(mutation.follow(`test${j}@test.com`));
+
       expect(res.body.data.follow).toBeTruthy();
     }
 
@@ -92,7 +92,6 @@ it("get number of following users and followers", async () => {
       .set("Cookie", global.signin(arr[i]))
       .send(query.getFollowing());
 
-    expect(res.error).toBeFalsy();
     expect(res.body.data.getFollowing).toHaveLength(i);
   }
 
@@ -125,7 +124,7 @@ it("unfollow success", async () => {
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user2))
-    .send(mutation.unfollow(user1));
+    .send(mutation.unfollow(userData.email));
 
   expect(res.body.data.unfollow).toBeTruthy();
 });

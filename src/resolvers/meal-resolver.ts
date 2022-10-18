@@ -10,9 +10,12 @@ export default class MealResolver {
   @UseMiddleware(currentUser)
   async createMeal(
     @Arg("meal", () => CreateMealData) meal: CreateMealData,
-    @Ctx() { userId }: Context
+    @Ctx() { user }: Context
   ) {
-    const { identifiers } = await Meal.insert({ ...meal, user_id: userId });
+    const { identifiers } = await Meal.insert({
+      ...meal,
+      user_id: user.user_id,
+    });
     return identifiers.length > 0;
   }
 }

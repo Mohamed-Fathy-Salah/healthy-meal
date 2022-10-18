@@ -12,7 +12,6 @@ import Meal from "./meal";
 @ObjectType()
 @Entity()
 export default class User extends BaseEntity {
-  @Field()
   @PrimaryGeneratedColumn("uuid")
   user_id: string;
 
@@ -24,7 +23,7 @@ export default class User extends BaseEntity {
   @Column("text", { unique: true })
   email: string;
 
-  @Column("text")
+  @Column("text", { select: false })
   password: string;
 
   @Field()

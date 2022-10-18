@@ -15,11 +15,11 @@ import { currentUser } from "../middlewares/current-user";
 export default class FollowResolver {
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowers(@Ctx() { userId }: Context) {
+  async getFollowers(@Ctx() { user }: Context) {
     const res = (
       await Follow.find({
         relations: ["user"],
-        where: { user_id: userId },
+        where: { user_id: user.user_id },
         select: ["user"],
       })
     ).map((v) => {
@@ -30,11 +30,11 @@ export default class FollowResolver {
 
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowing(@Ctx() { userId }: Context) {
+  async getFollowing(@Ctx() { user }: Context) {
     const res = (
       await Follow.find({
         relations: ["follower"],
-        where: { follower_id: userId },
+        where: { follower_id: user.user_id },
         select: ["follower"],
       })
     ).map((v) => {
@@ -46,14 +46,17 @@ export default class FollowResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(currentUser)
   async follow(
-    @Arg("user_id", () => String) userId: string,
-    @Ctx() ctx: Context
+    @Arg("email", () => String) email: string,
+    @Ctx() { user }: Context
   ) {
-    const id = ctx.userId;
-    if (id === userId) return false;
+    if (user.email === email) return false;
+
+    const existingUser = await User.findOne({ email }, { select: ["user_id"] });
+    if (!existingUser) return false;
+
     const { identifiers } = await Follow.insert({
-      user_id: userId,
-      follower_id: id,
+      user_id: existingUser.user_id,
+      follower_id: user.user_id,
     });
     return identifiers?.length > 0;
   }
@@ -61,13 +64,15 @@ export default class FollowResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(currentUser)
   async unfollow(
-    @Arg("user_id", () => String) userId: string,
-    @Ctx() ctx: Context
+    @Arg("email", () => String) email: string,
+    @Ctx() { user }: Context
   ) {
-    const id = ctx.userId;
+    const existingUser = await User.findOne({ email }, { select: ["user_id"] });
+    if (!existingUser) return false;
+
     const { affected } = await Follow.delete({
-      user_id: userId,
-      follower_id: id,
+      user_id: existingUser.user_id,
+      follower_id: user.user_id,
     });
     return affected! > 0;
   }

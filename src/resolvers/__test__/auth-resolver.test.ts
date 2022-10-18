@@ -23,7 +23,7 @@ const mutation = {
 const query = {
   getCurrentUser: () => {
     return {
-      query: "query {getCurrentUser{user_id}}",
+      query: "query {getCurrentUser{name}}",
     };
   },
 };
@@ -34,8 +34,8 @@ it("signup success", async () => {
   expect(res.error).toBeFalsy();
   expect(res.body.data.signup).toBeDefined();
 
-  const user = await User.findOne(res.body.data.signup);
-  expect(user.user_id).toBe(res.body.data.signup);
+  const users = await User.find();
+  expect(users).toHaveLength(1);
 });
 
 it("wrong signup credentials", async () => {
@@ -105,14 +105,15 @@ it("current user without signup", async () => {
 });
 
 it("current user with signup", async () => {
-  const userId = (await request(global.url).post("/").send(mutation.signup()))
-    .body.data.signup;
-
+  await request(global.url).post("/").send(mutation.signup());
+  const userId = (await User.find({ select: ["user_id"] }))[0].user_id;
   const { body } = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(userId))
     .send(query.getCurrentUser());
 
   expect(body.errors).toBeUndefined();
-  expect(body.data.getCurrentUser.user_id).toBe(userId);
+  expect(body.data.getCurrentUser.name).toBe(
+    mutation.signup().variables.user.name
+  );
 });

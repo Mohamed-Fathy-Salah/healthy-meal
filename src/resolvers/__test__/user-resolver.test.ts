@@ -12,12 +12,12 @@ const userData = {
 const query = {
   getUsers: () => {
     return {
-      query: `query { getUsers{ user_id, email } }`,
+      query: `query { getUsers{ email } }`,
     };
   },
-  getUser: (id: string) => {
+  getUser: (email: string) => {
     return {
-      query: `query { getUser(id: "${id}"){ user_id, email } }`,
+      query: `query { getUser(email: "${email}"){ email } }`,
     };
   },
 };
@@ -54,20 +54,21 @@ it("getUsers", async () => {
   expect(res.body.data.getUsers).toHaveLength(N);
 });
 
-it("get user with id success", async () => {
+it("get user with email success", async () => {
   const user = User.create(userData);
   await user.save();
 
   const res = await request(global.url)
     .post("/")
-    .send(query.getUser(user.user_id));
-  expect(res.body.data.getUser.user_id).toBe(user.user_id);
+    .send(query.getUser(user.email));
+
+  expect(res.body.data.getUser).toBeDefined()
 });
 
 it("get user that does not exist", async () => {
   const res = await request(global.url)
     .post("/")
-    .send(query.getUser("a;jfjadsfadfasdf"));
+    .send(query.getUser("hi@emila.com"));
   expect(res.body.errors).toBeDefined();
 });
 
@@ -76,7 +77,7 @@ it("update user that does not exist", async () => {
     .post("/")
     .set("Cookie", global.signin())
     .send(mutation.updateUser({ name: "adsf" }));
-  expect(res.body.data.updateUser).toBeFalsy();
+  expect(res.body.errors).toBeDefined();
 });
 
 it("update user with out login", async () => {
@@ -120,7 +121,7 @@ it("delete user that does not exist", async () => {
     .set("Cookie", global.signin())
     .send(mutation.deleteUser());
 
-  expect(body.data.deleteUser).toBeFalsy();
+  expect(body.errors).toBeDefined();
 });
 it("delete user without login", async () => {
   const { body } = await request(global.url)
