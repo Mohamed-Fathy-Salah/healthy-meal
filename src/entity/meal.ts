@@ -5,9 +5,11 @@ import {
   BaseEntity,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { Field, ObjectType } from "type-graphql";
 import User from "./user";
+import MealIngredients from "./meal-ingredients";
 
 @ObjectType()
 @Entity()
@@ -69,4 +71,8 @@ export default class Meal extends BaseEntity {
   @Field()
   @Column("text", { default: "pending" })
   status: string;
+
+  @Field(() => [MealIngredients])
+  @OneToMany(() => MealIngredients, (mealIngredients) => mealIngredients.meal)
+  mealIngredients: MealIngredients[];
 }

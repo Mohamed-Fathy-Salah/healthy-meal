@@ -10,11 +10,9 @@ declare global {
 }
 
 let apolloServer: ApolloServer, db: Connection, httpServer: Server;
-
 beforeAll(async () => {
   const options = await getConnectionOptions("testing");
   db = await createConnection({ ...options, name: "default" });
-
   const port = 3000;
   ({ apolloServer, httpServer } = await createApolloServer(port));
   global.url = `http://localhost:${port}/graphql`;

@@ -27,6 +27,6 @@ export default class Follow extends BaseEntity {
   @ManyToOne(() => User, (user) => user.user_id, {
     onDelete: "CASCADE",
   })
-  @JoinColumn({ name: "user_id" })
+  @JoinColumn({ name: "follower_id" })
   follower: User;
 }

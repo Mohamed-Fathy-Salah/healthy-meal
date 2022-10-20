@@ -40,6 +40,7 @@
     "start": "ts-node src/index.ts",
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
-    "test": "jest --runInBand --force-exit"
+    "test": "jest --runInBand --force-exit",
+    "test:watch": "jest --runInBand --watch"
   }
 }

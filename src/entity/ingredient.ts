@@ -1,21 +1,20 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   BaseEntity,
   ManyToOne,
+  PrimaryColumn,
+  OneToMany,
 } from "typeorm";
 import { Field, ObjectType } from "type-graphql";
 import Unit from "./unit";
+import MealIngredients from "./meal-ingredients";
 
 @ObjectType()
 @Entity()
 export default class Ingredient extends BaseEntity {
-  @PrimaryGeneratedColumn("uuid")
-  ingredient_id: string;
-
   @Field()
-  @Column("text")
+  @PrimaryColumn("text")
   name: string;
 
   @Field()
@@ -41,4 +40,11 @@ export default class Ingredient extends BaseEntity {
   @Field()
   @ManyToOne(() => Unit, (unit) => unit.ingredients)
   unit: Unit;
+
+  @Field(() => [MealIngredients])
+  @OneToMany(
+    () => MealIngredients,
+    (mealIngredients) => mealIngredients.ingredient
+  )
+  mealIngredients: MealIngredients[];
 }
