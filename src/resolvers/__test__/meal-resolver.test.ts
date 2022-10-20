@@ -3,6 +3,7 @@ import request from "supertest";
 import User from "../../entity/user";
 import Ingredient from "../../entity/ingredient";
 import Unit from "../../entity/unit";
+import Follow from "../../entity/follow";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -69,8 +70,11 @@ const mutation = {
 const query = {
   getUserMeals: (email: string) => ({
     query:
-      "query getUserMeals($email: String!){getUserMeals(email: $email){meal_id, name}}",
+      "query getUserMeals($email: String!){getUserMeals(email: $email){meal_id, name, type}}",
     variables: { email },
+  }),
+  getFollowingMeals: () => ({
+    query: "query {getFollowingMeals{name, email, meals{name, type}}}",
   }),
 };
 
@@ -146,7 +150,7 @@ it("get meals of user", async () => {
     .post("/")
     .send(query.getUserMeals(user.email));
 
-  expect(res.body.data.getMeals).toHaveLength(1);
+  expect(res.body.data.getUserMeals).toHaveLength(1);
 });
 
 it("get meals of user that doesnot exist", async () => {
@@ -157,12 +161,42 @@ it("get meals of user that doesnot exist", async () => {
   expect(res.body.errors).toBeDefined();
 });
 
+it("get meals of following users", async () => {
+  const user1 = User.create(userData);
+  await user1.save();
+  const user2 = User.create({ ...userData, email: "test2@test.com" });
+  await user2.save();
+  const user3 = User.create({ ...userData, email: "test3@test.com" });
+  await user3.save();
+
+  await Follow.insert({ user_id: user1.user_id, follower_id: user3.user_id });
+  await Follow.insert({ user_id: user2.user_id, follower_id: user3.user_id });
+
+  await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user1.user_id))
+    .send(mutation.createMeal());
+
+  await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user2.user_id))
+    .send(mutation.createMeal("snack"));
+
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user3.user_id))
+    .send(query.getFollowingMeals());
+
+    console.error(res.text)
+    console.error(res.body.data.getFollowingMeals);
+  expect(res.body.data.getFollowingMeals).toHaveLength(2);
+});
+
 it.todo("get meals by tags");
 it.todo("get meals by likes");
 it.todo("get meals by ingredients");
 it.todo("get meals by prep time");
 it.todo("get meals by type");
-it.todo("get meals of following users");
 it.todo("get bookmarked meals");
 it.todo("delete meal without signup or with wrong user");
 it.todo("delete non existing meal");

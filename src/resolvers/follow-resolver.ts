@@ -15,30 +15,30 @@ import { currentUser } from "../middlewares/current-user";
 export default class FollowResolver {
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowers(@Ctx() { user }: Context) {
+  async getFollowers(@Ctx() { user: { user_id } }: Context) {
     const res = (
       await Follow.find({
-        relations: ["user"],
-        where: { user_id: user.user_id },
-        select: ["user"],
+        relations: ["follower"],
+        where: { user_id: user_id },
+        select: ["follower"],
       })
     ).map((v) => {
-      return { ...v.user };
+      return { ...v.follower };
     });
     return res;
   }
 
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowing(@Ctx() { user }: Context) {
+  async getFollowing(@Ctx() { user: { user_id } }: Context) {
     const res = (
       await Follow.find({
-        relations: ["follower"],
-        where: { follower_id: user.user_id },
-        select: ["follower"],
+        relations: ["user"],
+        where: { follower_id: user_id },
+        select: ["user"],
       })
     ).map((v) => {
-      return { ...v.follower };
+      return { ...v.user };
     });
     return res;
   }

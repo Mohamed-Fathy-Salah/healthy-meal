@@ -9,10 +9,10 @@ const userData = {
 };
 const query = {
   getFollowing: () => {
-    return { query: `query{ getFollowing{ name }}` };
+    return { query: `query{ getFollowing{ name, email }}` };
   },
   getFollowers: () => {
-    return { query: `query{ getFollowers{ name }}` };
+    return { query: `query{ getFollowers{ name, email }}` };
   },
 };
 const mutation = {
@@ -92,7 +92,10 @@ it("get number of following users and followers", async () => {
       .set("Cookie", global.signin(arr[i]))
       .send(query.getFollowing());
 
-    expect(res.body.data.getFollowing).toHaveLength(i);
+    const following = res.body.data.getFollowing;
+    expect(following).toHaveLength(i);
+    for (let j = 0; j < following.length; j++)
+      expect(following[j].email).toBe(`test${j}@test.com`);
   }
 
   for (let i = 0; i < N; i++) {
@@ -102,7 +105,11 @@ it("get number of following users and followers", async () => {
       .send(query.getFollowers());
 
     expect(res.error).toBeFalsy();
-    expect(res.body.data.getFollowers).toHaveLength(N - i - 1);
+    const followers = res.body.data.getFollowers;
+    expect(followers).toHaveLength(N - i - 1);
+
+    const emails = followers.map((v:{email: string}) => v.email);
+    expect(new Set(emails).size).toEqual(N - i - 1);
   }
 });
 

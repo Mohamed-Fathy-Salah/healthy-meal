@@ -12,6 +12,7 @@ import Context from "../context";
 import { CreateMealData, MealFilter } from "./types/meal";
 import Ingredient from "../entity/ingredient";
 import User from "../entity/user";
+import Follow from "../entity/follow";
 
 @Resolver()
 export default class MealResolver {
@@ -19,6 +20,21 @@ export default class MealResolver {
   async getUserMeals(@Arg("email", () => String) email: string) {
     //todo: select meals not working for some reasone
     return (await User.findOne({ email }, { relations: ["meals"] }))?.meals;
+  }
+
+  @Query(() => [User])
+  @UseMiddleware(currentUser)
+  async getFollowingMeals(@Ctx() { user: { user_id } }: Context) {
+      //todo: one query
+    const following = await Follow.find({
+      where: { follower_id: user_id },
+      select: ["user_id"],
+    });
+    const followingMeals = await User.findByIds(
+      following.map((v) => v.user_id),
+      { relations: ["meals"] }
+    );
+    return followingMeals;
   }
 
   @Query(() => [Meal])
