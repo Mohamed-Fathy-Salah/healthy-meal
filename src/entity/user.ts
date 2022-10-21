@@ -8,6 +8,8 @@ import {
 import { Field, ObjectType } from "type-graphql";
 import Follow from "./follow";
 import Meal from "./meal";
+import Like from "./like";
+import Bookmark from "./bookmark";
 
 @ObjectType()
 @Entity()
@@ -60,4 +62,12 @@ export default class User extends BaseEntity {
   @Field(() => [Meal])
   @OneToMany(() => Meal, (meal) => meal.user)
   meals: Meal[];
+
+  @Field(() => [Like])
+  @OneToMany(() => Like, (like) => like.user)
+  likes: Like[];
+
+  @Field(() => [Bookmark])
+  @OneToMany(() => Bookmark, (bookmark) => bookmark.user)
+  bookmarks: Bookmark[];
 }

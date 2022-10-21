@@ -9,9 +9,10 @@ import {
 import User from "../entity/user";
 import { Password } from "../services/password";
 import jwt from "jsonwebtoken";
-import { UserSignup, UserSignin } from "./types/user";
 import { currentUser } from "../middlewares/current-user";
 import Context from "../context";
+import { UserSignup } from "./types/user/user-signup";
+import { UserSignin } from "./types/user/user-signin";
 
 @Resolver()
 export default class AuthResolver {

@@ -4,6 +4,7 @@ import User from "../../entity/user";
 import Ingredient from "../../entity/ingredient";
 import Unit from "../../entity/unit";
 import Follow from "../../entity/follow";
+import MealFilter from "../types/meal/meal-filter";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -57,12 +58,12 @@ const mealData = {
 };
 
 const mutation = {
-  createMeal: (type?: string) => {
+  createMeal: (type?: string, tags?: string[]) => {
     type = type || "breakfast";
     return {
       query:
         "mutation createMeal($meal: CreateMealData!){ createMeal(meal: $meal)}",
-      variables: { meal: { ...mealData, type } },
+      variables: { meal: { ...mealData, type, tags } },
     };
   },
 };
@@ -75,6 +76,11 @@ const query = {
   }),
   getFollowingMeals: () => ({
     query: "query {getFollowingMeals{name, email, meals{name, type}}}",
+  }),
+  filterMeals: (filter: MealFilter) => ({
+    query:
+      "query filterMeals($filter: MealFilter!){filterMeals(filter: $filter){name, type, tags}}",
+    variables: { filter: { ...filter } },
   }),
 };
 
@@ -187,16 +193,39 @@ it("get meals of following users", async () => {
     .set("Cookie", global.signin(user3.user_id))
     .send(query.getFollowingMeals());
 
-    console.error(res.text)
-    console.error(res.body.data.getFollowingMeals);
   expect(res.body.data.getFollowingMeals).toHaveLength(2);
+});
+
+it("get meals by type", async () => {
+  for (let i = 0; i < 3; i++) {
+    const user = User.create({ ...userData, email: `test${i}@test.com` });
+    await user.save();
+    for (let j = 0; j < 3; j++)
+      await request(global.url)
+        .post("/")
+        .set("Cookie", global.signin(user.user_id))
+        .send(mutation.createMeal("snack", [`tag${j}`]));
+  }
+  for (let i = 0; i < 3; i++) {
+    const res = await request(global.url)
+      .post("/")
+      .send(query.filterMeals({ tags: [`tag${i}`] }));
+
+    console.error(res.text);
+    expect(res.body.data.filterMeals).toHaveLength(2);
+  }
+
+  const res = await request(global.url)
+    .post("/")
+    .send(query.filterMeals({ tags: ["tag1", "tag2"] }));
+
+  expect(res.body.data.filterMeals).toHaveLength(4);
 });
 
 it.todo("get meals by tags");
 it.todo("get meals by likes");
 it.todo("get meals by ingredients");
 it.todo("get meals by prep time");
-it.todo("get meals by type");
 it.todo("get bookmarked meals");
 it.todo("delete meal without signup or with wrong user");
 it.todo("delete non existing meal");

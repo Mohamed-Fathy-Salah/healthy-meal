@@ -9,7 +9,7 @@ import {
 import User from "../entity/user";
 import Context from "../context";
 import { currentUser } from "../middlewares/current-user";
-import { UserData } from "./types/user";
+import { UserData } from "./types/user/user-data";
 
 @Resolver()
 export default class UserResolver {

@@ -1,7 +1,7 @@
 import Follow from "../../entity/follow";
 import request from "supertest";
 import User from "../../entity/user";
-import { UserData } from "../types/user";
+import { UserData } from "../types/user/user-data";
 
 const userData = {
   name: "fad",

@@ -1,7 +1,5 @@
 import { Field, InputType } from "type-graphql";
 import {
-  IsEmail,
-  Length,
   IsNotEmpty,
   IsDate,
   IsNumber,
@@ -10,33 +8,7 @@ import {
   IsUrl,
   IsIn,
 } from "class-validator";
-import User from "../../entity/user";
-
-@InputType()
-export class UserSignup implements Partial<User> {
-  @Field()
-  @IsNotEmpty()
-  name: string;
-
-  @Field()
-  @IsEmail()
-  email: string;
-
-  @Field()
-  @Length(5, 30)
-  password: string;
-}
-
-@InputType()
-export class UserSignin {
-  @Field()
-  @IsEmail()
-  email: string;
-
-  @Field()
-  @Length(5, 30)
-  password: string;
-}
+import User from "../../../entity/user";
 
 @InputType()
 export class UserData implements Partial<User> {

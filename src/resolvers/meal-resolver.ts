@@ -9,10 +9,11 @@ import {
   UseMiddleware,
 } from "type-graphql";
 import Context from "../context";
-import { CreateMealData, MealFilter } from "./types/meal";
 import Ingredient from "../entity/ingredient";
 import User from "../entity/user";
 import Follow from "../entity/follow";
+import MealFilter from "./types/meal/meal-filter";
+import CreateMealData from "./types/meal/create-meal-data";
 
 @Resolver()
 export default class MealResolver {
@@ -25,7 +26,7 @@ export default class MealResolver {
   @Query(() => [User])
   @UseMiddleware(currentUser)
   async getFollowingMeals(@Ctx() { user: { user_id } }: Context) {
-      //todo: one query
+    //todo: one query
     const following = await Follow.find({
       where: { follower_id: user_id },
       select: ["user_id"],
@@ -39,7 +40,14 @@ export default class MealResolver {
 
   @Query(() => [Meal])
   async filterMeals(@Arg("filter", () => MealFilter) filter: MealFilter) {
-    return await Meal.find({ ...filter });
+    try {
+        console.error('hi');
+      const res =  await Meal.find({ where: { mealTags: { in: filter.tags } } });
+      return res;
+    } catch (e) {
+      console.error(e);
+    }
+    return [];
   }
 
   @Mutation(() => Boolean)
