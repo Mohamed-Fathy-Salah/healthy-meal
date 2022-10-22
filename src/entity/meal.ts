@@ -80,8 +80,8 @@ export default class Meal extends BaseEntity {
   mealIngredients: MealIngredients[];
 
   @Field(() => [MealTags])
-  @OneToMany(() => MealTags, (mealTags) => mealTags.tag)
-  mealTags: MealTags[];
+  @OneToMany(() => MealTags, (mealTags) => mealTags.meal, {eager: true})
+  tags: MealTags[];
 
   @Field(() => [Like])
   @OneToMany(() => Like, (like) => like.meal)

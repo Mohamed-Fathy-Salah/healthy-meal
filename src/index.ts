@@ -1,12 +1,15 @@
 import "reflect-metadata";
-import { createConnection, getConnectionOptions } from "typeorm";
+import { Connection, createConnection, getConnectionOptions } from "typeorm";
 import { createApolloServer } from "./server";
 
+let db: Connection;
 (async () => {
   const options = await getConnectionOptions(
     process.env.NODE_ENV || "development"
   );
-  await createConnection({ ...options, name: "default" });
+  db = await createConnection({ ...options, name: "default" });
 
   await createApolloServer(process.env.PORT || 4000);
 })();
+
+export { db };

@@ -29,5 +29,5 @@ export default class MealFilter {
   ingredients?: string[];
 
   @Field(() => [String], { nullable: true })
-  tags: string[];
+  tags?: string[];
 }

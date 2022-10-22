@@ -10,6 +10,7 @@ declare global {
 }
 
 let apolloServer: ApolloServer, db: Connection, httpServer: Server;
+console.clear()
 beforeAll(async () => {
   const options = await getConnectionOptions("testing");
   db = await createConnection({ ...options, name: "default" });

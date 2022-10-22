@@ -1,10 +1,9 @@
 import { IsIn, IsNotEmpty, IsUrl } from "class-validator";
-import Meal from "../../../entity/meal";
 import { Field, InputType } from "type-graphql";
 import IngredientFactor from "./ingredient-factor";
 
 @InputType()
-export default class CreateMealData implements Partial<Meal> {
+export default class CreateMealData {
   @Field()
   @IsNotEmpty()
   name: string;
@@ -31,4 +30,7 @@ export default class CreateMealData implements Partial<Meal> {
 
   @Field(() => [IngredientFactor])
   ingredients: IngredientFactor[];
+
+  @Field(() => [String], { nullable: true })
+  tags: string[];
 }

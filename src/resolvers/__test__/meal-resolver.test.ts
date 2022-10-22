@@ -79,7 +79,7 @@ const query = {
   }),
   filterMeals: (filter: MealFilter) => ({
     query:
-      "query filterMeals($filter: MealFilter!){filterMeals(filter: $filter){name, type, tags}}",
+      "query filterMeals($filter: MealFilter!){filterMeals(filter: $filter){name, type, tags{tag} }}",
     variables: { filter: { ...filter } },
   }),
 };
@@ -196,16 +196,18 @@ it("get meals of following users", async () => {
   expect(res.body.data.getFollowingMeals).toHaveLength(2);
 });
 
-it("get meals by type", async () => {
+it.only("get meals by tags", async () => {
   for (let i = 0; i < 3; i++) {
     const user = User.create({ ...userData, email: `test${i}@test.com` });
     await user.save();
-    for (let j = 0; j < 3; j++)
+    for (let j = 0; j < 3; j++) {
       await request(global.url)
         .post("/")
         .set("Cookie", global.signin(user.user_id))
         .send(mutation.createMeal("snack", [`tag${j}`]));
+    }
   }
+
   for (let i = 0; i < 3; i++) {
     const res = await request(global.url)
       .post("/")
@@ -222,7 +224,7 @@ it("get meals by type", async () => {
   expect(res.body.data.filterMeals).toHaveLength(4);
 });
 
-it.todo("get meals by tags");
+it.todo("get meals by type");
 it.todo("get meals by likes");
 it.todo("get meals by ingredients");
 it.todo("get meals by prep time");

@@ -14,6 +14,8 @@ import User from "../entity/user";
 import Follow from "../entity/follow";
 import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
+import MealTags from "../entity/meal-tags";
+import { db } from "../index";
 
 @Resolver()
 export default class MealResolver {
@@ -41,8 +43,20 @@ export default class MealResolver {
   @Query(() => [Meal])
   async filterMeals(@Arg("filter", () => MealFilter) filter: MealFilter) {
     try {
-        console.error('hi');
-      const res =  await Meal.find({ where: { mealTags: { in: filter.tags } } });
+      // todo: cant filter onetomany relations
+      // how to filter from each table?
+      //
+      //
+      //SELECT meal.*, user.name, user.email, meal_tags.tag, meal_ingredients.name FROM meal
+      //INNER JOIN user ON user.user_id = meal.user_id AND user.email IN (${emails})
+      //INNER JOIN bookmark ON bookmark.meal_id = meal.meal_id AND bookmark.user_id = ${userId}
+      //INNER JOIN meal_tags ON meal_tags.meal_id = meal.meal_id AND meal_tag.tag IN (${tags})
+      //INNER JOIN meal_ingredients ON meal.meal_id = meal_ingredients.meal_id AND meal_ingredients.name IN (${ingredients})
+
+      console.error(db);
+      const res = db.createQueryBuilder().select("meal").from(Meal, "meal");
+
+      console.error(res, filter);
       return res;
     } catch (e) {
       console.error(e);
@@ -77,7 +91,12 @@ export default class MealResolver {
     }
 
     const { identifiers } = await Meal.insert({
-      ...meal,
+      name: meal.name,
+      description: meal.description,
+      type: meal.type,
+      photo: meal.photo,
+      prep_time: meal.prep_time,
+      steps: meal.steps,
       user_id,
       mealIngredients: ingredients,
       fat: totalFat,
@@ -85,6 +104,11 @@ export default class MealResolver {
       protein: totalProtein,
       calories: totalCalories,
     });
+
+    await MealTags.insert(
+      meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
+    );
+
     return identifiers.length > 0;
   }
 }

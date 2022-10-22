@@ -11,13 +11,13 @@ import Meal from "./meal";
 @ObjectType()
 @Entity()
 export default class MealTags extends BaseEntity {
-  @PrimaryColumn("uuid")
+  @PrimaryColumn("uuid", {select: false})
   meal_id: string;
 
+  @Field(() => String)
   @PrimaryColumn("text")
   tag: string;
 
-  @Field(() => Meal)
   @ManyToOne(() => Meal, (meal) => meal.meal_id, {
     onDelete: "CASCADE",
   })
