@@ -1,4 +1,4 @@
-import { IsIn, IsString } from "class-validator";
+import { IsEmail, IsIn, IsString } from "class-validator";
 import { Field, InputType } from "type-graphql";
 import FilterRange from "../filter-range";
 
@@ -8,6 +8,11 @@ export default class MealFilter {
   @IsString({ each: true })
   @IsIn(["breakfast", "launch", "dinner", "snack"])
   type?: string[];
+
+  @Field(() => [String], { nullable: true })
+  @IsString({ each: true })
+  @IsEmail()
+  emails?: string[];
 
   @Field(() => FilterRange, { nullable: true })
   calories?: FilterRange;

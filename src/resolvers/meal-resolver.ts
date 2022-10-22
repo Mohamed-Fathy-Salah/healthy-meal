@@ -15,7 +15,7 @@ import Follow from "../entity/follow";
 import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
-import { db } from "../index";
+import { getConnection } from "typeorm";
 
 @Resolver()
 export default class MealResolver {
@@ -41,20 +41,49 @@ export default class MealResolver {
   }
 
   @Query(() => [Meal])
-  async filterMeals(@Arg("filter", () => MealFilter) filter: MealFilter) {
+  async filterMeals(
+    @Arg("filter", () => MealFilter) filter: MealFilter,
+    @Ctx() { user: { user_id } }: Context
+  ) {
     try {
       // todo: cant filter onetomany relations
       // how to filter from each table?
-      //
       //
       //SELECT meal.*, user.name, user.email, meal_tags.tag, meal_ingredients.name FROM meal
       //INNER JOIN user ON user.user_id = meal.user_id AND user.email IN (${emails})
       //INNER JOIN bookmark ON bookmark.meal_id = meal.meal_id AND bookmark.user_id = ${userId}
       //INNER JOIN meal_tags ON meal_tags.meal_id = meal.meal_id AND meal_tag.tag IN (${tags})
       //INNER JOIN meal_ingredients ON meal.meal_id = meal_ingredients.meal_id AND meal_ingredients.name IN (${ingredients})
+      //
+      //todo: like, type, calories, fat, protein, carb, prep_time
+      //todo: innerjoin apply condition when corresponding filter exists
 
-      console.error(db);
-      const res = db.createQueryBuilder().select("meal").from(Meal, "meal");
+      const res = await getConnection()
+        .createQueryBuilder()
+        .select("meal")
+        .from(Meal, "meal")
+        .innerJoinAndSelect("meal.user", "user", "user.email IN (:...emails)", {
+          emails: filter.emails,
+        })
+        .innerJoinAndSelect(
+          "meal.bookmarks",
+          "bookmark",
+          "bookmark.user_id =:user_id",
+          { user_id }
+        )
+        .innerJoinAndSelect(
+          "meal.tags",
+          "mealtags",
+          "mealtags.tag IN (:...tags)",
+          { tags: filter.tags }
+        )
+        .innerJoinAndSelect(
+          "meal.mealIngredients",
+          "mealingredients",
+          "mealingredients.name IN (:...ingredients)",
+          { ingredients: filter.ingredients }
+        )
+        .getMany();
 
       console.error(res, filter);
       return res;

@@ -127,6 +127,7 @@ it("make meal with valid data", async () => {
     .set("Cookie", global.signin(user.user_id))
     .send(mutation.createMeal());
 
+    console.error(res.body);
   expect(res.body.data.createMeal).toBeTruthy();
 
   const meals = await Meal.find();
@@ -196,7 +197,7 @@ it("get meals of following users", async () => {
   expect(res.body.data.getFollowingMeals).toHaveLength(2);
 });
 
-it.only("get meals by tags", async () => {
+it("get meals by tags", async () => {
   for (let i = 0; i < 3; i++) {
     const user = User.create({ ...userData, email: `test${i}@test.com` });
     await user.save();
