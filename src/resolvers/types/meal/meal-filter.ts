@@ -4,10 +4,10 @@ import FilterRange from "../filter-range";
 
 @InputType()
 export default class MealFilter {
-  @Field(() => [String], { nullable: true })
-  @IsString({ each: true })
+  @Field(() => String, { nullable: true })
+  //todo: make enum
   @IsIn(["breakfast", "launch", "dinner", "snack"])
-  type?: string[];
+  type?: string;
 
   @Field(() => [String], { nullable: true })
   @IsString({ each: true })
@@ -35,4 +35,7 @@ export default class MealFilter {
 
   @Field(() => [String], { nullable: true })
   tags?: string[];
+
+  @Field(() => Boolean, { defaultValue: false })
+  bookmarks?: boolean;
 }

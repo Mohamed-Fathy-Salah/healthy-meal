@@ -41,6 +41,7 @@ export default class MealResolver {
   }
 
   @Query(() => [Meal])
+  @UseMiddleware(currentUser)
   async filterMeals(
     @Arg("filter", () => MealFilter) filter: MealFilter,
     @Ctx() { user: { user_id } }: Context
@@ -50,7 +51,6 @@ export default class MealResolver {
       // how to filter from each table?
       //
       //SELECT meal.*, user.name, user.email, meal_tags.tag, meal_ingredients.name FROM meal
-      //INNER JOIN user ON user.user_id = meal.user_id AND user.email IN (${emails})
       //INNER JOIN bookmark ON bookmark.meal_id = meal.meal_id AND bookmark.user_id = ${userId}
       //INNER JOIN meal_tags ON meal_tags.meal_id = meal.meal_id AND meal_tag.tag IN (${tags})
       //INNER JOIN meal_ingredients ON meal.meal_id = meal_ingredients.meal_id AND meal_ingredients.name IN (${ingredients})
@@ -58,33 +58,50 @@ export default class MealResolver {
       //todo: like, type, calories, fat, protein, carb, prep_time
       //todo: innerjoin apply condition when corresponding filter exists
 
-      const res = await getConnection()
+      let query = getConnection()
         .createQueryBuilder()
-        .select("meal")
-        .from(Meal, "meal")
-        .innerJoinAndSelect("meal.user", "user", "user.email IN (:...emails)", {
-          emails: filter.emails,
-        })
-        .innerJoinAndSelect(
+        .select(["meal", "user.email"])
+        .from(Meal, "meal");
+
+      if (filter.bookmarks)
+        query = query.innerJoin(
           "meal.bookmarks",
           "bookmark",
           "bookmark.user_id =:user_id",
           { user_id }
-        )
-        .innerJoinAndSelect(
-          "meal.tags",
-          "mealtags",
-          "mealtags.tag IN (:...tags)",
-          { tags: filter.tags }
-        )
-        .innerJoinAndSelect(
-          "meal.mealIngredients",
-          "mealingredients",
-          "mealingredients.name IN (:...ingredients)",
-          { ingredients: filter.ingredients }
-        )
-        .getMany();
+        );
 
+      query = filter.emails
+        ? query.innerJoin("meal.user", "user", "user.email IN (:...emails)", {
+            emails: filter.emails,
+          })
+        : query.leftJoin("meal.user", "user");
+
+      console.error(await query.getMany());
+      query = filter.tags
+        ? query.innerJoinAndSelect(
+            "meal.tags",
+            "mealtags",
+            "mealtags.tag IN (:...tags)",
+            { tags: filter.tags }
+          )
+        : query.leftJoinAndSelect("meal.tags", "mealtags");
+
+      console.error(await query.getMany());
+
+      if (filter.type)
+        query = query.where("meal.type = :type", { type: filter.type });
+
+      //.innerJoinAndSelect(
+      //"meal.mealIngredients",
+      //"mealingredients",
+      //"mealingredients.name IN (:...ingredients)",
+      //{ ingredients: filter.ingredients }
+      //)
+      //.getMany();
+
+      const res = await query.getMany();
+      console.error(query.getSql());
       console.error(res, filter);
       return res;
     } catch (e) {
@@ -134,9 +151,10 @@ export default class MealResolver {
       calories: totalCalories,
     });
 
-    await MealTags.insert(
-      meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
-    );
+    if (meal.tags)
+      await MealTags.insert(
+        meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
+      );
 
     return identifiers.length > 0;
   }

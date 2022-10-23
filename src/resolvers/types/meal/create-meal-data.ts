@@ -32,5 +32,5 @@ export default class CreateMealData {
   ingredients: IngredientFactor[];
 
   @Field(() => [String], { nullable: true })
-  tags: string[];
+  tags?: string[];
 }

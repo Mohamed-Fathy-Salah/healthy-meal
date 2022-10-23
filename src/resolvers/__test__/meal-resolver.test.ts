@@ -58,7 +58,7 @@ const mealData = {
 };
 
 const mutation = {
-  createMeal: (type?: string, tags?: string[]) => {
+  createMeal: ({ type, tags }: { type?: string; tags?: string[] }) => {
     type = type || "breakfast";
     return {
       query:
@@ -85,7 +85,7 @@ const query = {
 };
 
 it("make meal without signup", async () => {
-  const res = await request(global.url).post("/").send(mutation.createMeal());
+  const res = await request(global.url).post("/").send(mutation.createMeal({}));
   expect(res.body.errors).toBeDefined();
   const meal = await Meal.find();
   expect(meal).toHaveLength(0);
@@ -95,7 +95,7 @@ it("make meal with user doesnot exist", async () => {
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin())
-    .send(mutation.createMeal());
+    .send(mutation.createMeal({}));
 
   expect(res.body.errors).toBeDefined();
 
@@ -110,7 +110,7 @@ it("make meal with unvalid data", async () => {
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user.user_id))
-    .send(mutation.createMeal("adf"));
+    .send(mutation.createMeal({ type: "adf" }));
 
   expect(res.body.errors).toBeDefined();
 
@@ -125,9 +125,8 @@ it("make meal with valid data", async () => {
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user.user_id))
-    .send(mutation.createMeal());
+    .send(mutation.createMeal({}));
 
-    console.error(res.body);
   expect(res.body.data.createMeal).toBeTruthy();
 
   const meals = await Meal.find();
@@ -151,7 +150,7 @@ it("get meals of user", async () => {
   await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user.user_id))
-    .send(mutation.createMeal());
+    .send(mutation.createMeal({}));
 
   const res = await request(global.url)
     .post("/")
@@ -182,12 +181,12 @@ it("get meals of following users", async () => {
   await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user1.user_id))
-    .send(mutation.createMeal());
+    .send(mutation.createMeal({}));
 
   await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user2.user_id))
-    .send(mutation.createMeal("snack"));
+    .send(mutation.createMeal({ type: "snack" }));
 
   const res = await request(global.url)
     .post("/")
@@ -205,27 +204,70 @@ it("get meals by tags", async () => {
       await request(global.url)
         .post("/")
         .set("Cookie", global.signin(user.user_id))
-        .send(mutation.createMeal("snack", [`tag${j}`]));
+        .send(mutation.createMeal({ type: "snack", tags: [`tag${j}`] }));
     }
   }
+
+  const user = User.create({ ...userData, email: `test10@test.com` });
+  await user.save();
 
   for (let i = 0; i < 3; i++) {
     const res = await request(global.url)
       .post("/")
+      .set("Cookie", global.signin(user.user_id))
       .send(query.filterMeals({ tags: [`tag${i}`] }));
 
-    console.error(res.text);
-    expect(res.body.data.filterMeals).toHaveLength(2);
+    expect(res.body.data.filterMeals).toHaveLength(3);
   }
 
-  const res = await request(global.url)
+  let res = await request(global.url)
     .post("/")
+    .set("Cookie", global.signin(user.user_id))
+    .send(query.filterMeals({ tags: ["tag0", "tag1"] }));
+
+  expect(res.body.data.filterMeals).toHaveLength(6);
+
+  res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user.user_id))
     .send(query.filterMeals({ tags: ["tag1", "tag2"] }));
 
-  expect(res.body.data.filterMeals).toHaveLength(4);
+  expect(res.body.data.filterMeals).toHaveLength(6);
+
+  res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user.user_id))
+    .send(query.filterMeals({ tags: ["tag0", "tag2"] }));
+
+  expect(res.body.data.filterMeals).toHaveLength(6);
 });
 
-it.todo("get meals by type");
+it("get meals by type", async () => {
+  const types = ["snack", "breakfast", "dinner"];
+  for (let i = 0; i < 3; i++) {
+    const user = User.create({ ...userData, email: `test${i}@test.com` });
+    await user.save();
+    for (let j = 0; j < 3; j++) {
+      await request(global.url)
+        .post("/")
+        .set("Cookie", global.signin(user.user_id))
+        .send(mutation.createMeal({ type: types[i] }));
+    }
+  }
+
+  const user = User.create({ ...userData, email: `test10@test.com` });
+  await user.save();
+
+  for (let i = 0; i < 3; i++) {
+    const res = await request(global.url)
+      .post("/")
+      .set("Cookie", global.signin(user.user_id))
+      .send(query.filterMeals({ type: types[i] }));
+
+    expect(res.body.data.filterMeals).toHaveLength(3);
+  }
+});
+
 it.todo("get meals by likes");
 it.todo("get meals by ingredients");
 it.todo("get meals by prep time");
