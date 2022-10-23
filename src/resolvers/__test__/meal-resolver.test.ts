@@ -5,6 +5,7 @@ import Ingredient from "../../entity/ingredient";
 import Unit from "../../entity/unit";
 import Follow from "../../entity/follow";
 import MealFilter from "../types/meal/meal-filter";
+import IngredientFactor from "../types/meal/ingredient-factor";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -32,6 +33,8 @@ beforeAll(async () => {
   });
 });
 
+const types = ["snack", "breakfast", "dinner"];
+
 const userData = {
   name: "fad",
   email: `test@test.com`,
@@ -58,12 +61,21 @@ const mealData = {
 };
 
 const mutation = {
-  createMeal: ({ type, tags }: { type?: string; tags?: string[] }) => {
-    type = type || "breakfast";
+  createMeal: ({
+    type,
+    tags,
+    ingredients,
+  }: {
+    type?: string;
+    tags?: string[];
+    ingredients?: IngredientFactor[];
+  }) => {
+    type = type || types[0];
+    ingredients = ingredients || mealData.ingredients;
     return {
       query:
         "mutation createMeal($meal: CreateMealData!){ createMeal(meal: $meal)}",
-      variables: { meal: { ...mealData, type, tags } },
+      variables: { meal: { ...mealData, type, tags, ingredients } },
     };
   },
 };
@@ -243,7 +255,6 @@ it("get meals by tags", async () => {
 });
 
 it("get meals by type", async () => {
-  const types = ["snack", "breakfast", "dinner"];
   for (let i = 0; i < 3; i++) {
     const user = User.create({ ...userData, email: `test${i}@test.com` });
     await user.save();
@@ -268,8 +279,37 @@ it("get meals by type", async () => {
   }
 });
 
-it("get meals by ingredients", async () => {
+it.only("get meals by ingredients", async () => {
+  const ings = ["tomato", "honey"];
+  for (let i = 0; i < 3; i++) {
+    const user = User.create({ ...userData, email: `test${i}@test.com` });
+    await user.save();
+    for (let j = 0; j < 3; j++) {
+      await request(global.url)
+        .post("/")
+        .set("Cookie", global.signin(user.user_id))
+        .send(
+          mutation.createMeal({
+            ingredients: [{ ingredient: ings[j % 2], factor: j + 1 }],
+          })
+        );
+    }
+  }
 
+  //todo : not saved in table for some reason
+  console.error(await Meal.find({relations:['mealIngredients']}));
+
+  const user = User.create({ ...userData, email: `test10@test.com` });
+  await user.save();
+
+  for (let i = 0; i < 3; i++) {
+    const res = await request(global.url)
+      .post("/")
+      .set("Cookie", global.signin(user.user_id))
+      .send(query.filterMeals({ ingredients: [ings[i % 2]] }));
+
+    expect(res.body.data.filterMeals).toHaveLength(3);
+  }
 });
 
 it.todo("get meals by prep time");

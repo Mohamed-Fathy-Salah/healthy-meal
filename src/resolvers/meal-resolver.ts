@@ -60,7 +60,7 @@ export default class MealResolver {
 
       let query = getConnection()
         .createQueryBuilder()
-        .select(["meal", "user.email"])
+        .select(["meal", "user.email", "mealingredients.name", "mealingredients.factor"])
         .from(Meal, "meal");
 
       if (filter.bookmarks)
@@ -77,7 +77,6 @@ export default class MealResolver {
           })
         : query.leftJoin("meal.user", "user");
 
-      console.error(await query.getMany());
       query = filter.tags
         ? query.innerJoinAndSelect(
             "meal.tags",
@@ -87,22 +86,28 @@ export default class MealResolver {
           )
         : query.leftJoinAndSelect("meal.tags", "mealtags");
 
-      console.error(await query.getMany());
-
       if (filter.type)
         query = query.where("meal.type = :type", { type: filter.type });
 
-      //.innerJoinAndSelect(
-      //"meal.mealIngredients",
-      //"mealingredients",
-      //"mealingredients.name IN (:...ingredients)",
-      //{ ingredients: filter.ingredients }
-      //)
-      //.getMany();
+      console.error(
+        await query
+          .leftJoin("meal.mealIngredients", "mealingredients")
+          .getMany()
+      );
+
+      //query = filter.ingredients
+        //? query.innerJoinAndSelect(
+            //"meal.mealIngredients",
+            //"mealingredients",
+            //"mealingredients.name IN (:...ingredients)",
+            //{ ingredients: filter.ingredients }
+          //)
+        //: query.leftJoinAndSelect("meal.mealIngredients", "mealingredients");
+
+      console.error(await query.getMany());
 
       const res = await query.getMany();
-      console.error(query.getSql());
-      console.error(res, filter);
+
       return res;
     } catch (e) {
       console.error(e);

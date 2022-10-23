@@ -16,6 +16,7 @@ export default class MealIngredients extends BaseEntity {
   @PrimaryColumn("uuid")
   meal_id: string;
 
+  @Field()
   @PrimaryColumn("text")
   name: string;
 
@@ -23,14 +24,12 @@ export default class MealIngredients extends BaseEntity {
   @Column()
   factor: number;
 
-  @Field(() => Meal)
   @ManyToOne(() => Meal, (meal) => meal.meal_id, {
     onDelete: "CASCADE",
   })
   @JoinColumn({ name: "meal_id" })
   meal: Meal;
 
-  @Field(() => Ingredient)
   @ManyToOne(() => Ingredient, (ingredient) => ingredient.name, {
     onDelete: "CASCADE",
   })
