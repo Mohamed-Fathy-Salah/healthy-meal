@@ -58,8 +58,7 @@ export default class Meal extends BaseEntity {
   @Column("text")
   prep_time: string;
 
-  @Field()
-  @Column("uuid")
+  @Column("uuid", { select: false })
   user_id: string;
 
   @Field(() => User)
@@ -80,7 +79,7 @@ export default class Meal extends BaseEntity {
   mealIngredients: MealIngredients[];
 
   @Field(() => [MealTags])
-  @OneToMany(() => MealTags, (mealTags) => mealTags.meal, {eager: true})
+  @OneToMany(() => MealTags, (mealTags) => mealTags.meal, { eager: true })
   tags: MealTags[];
 
   @Field(() => [Like])
