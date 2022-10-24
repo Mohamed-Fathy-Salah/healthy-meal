@@ -7,6 +7,7 @@ import UserResolver from "./resolvers/user-resolver";
 import FollowResolver from "./resolvers/follow-resolver";
 import MealResolver from "./resolvers/meal-resolver";
 import LikeResolver from "./resolvers/like-resolver";
+import BookmarkResolver from "./resolvers/bookmark-resolver";
 
 export const createApolloServer = async (port: number | string) => {
   const app = express();
@@ -17,7 +18,7 @@ export const createApolloServer = async (port: number | string) => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [AuthResolver, UserResolver, FollowResolver, MealResolver, LikeResolver],
+      resolvers: [AuthResolver, UserResolver, FollowResolver, MealResolver, LikeResolver, BookmarkResolver],
       validate: true,
     }),
     context: ({ req, res }) => ({ req, res }),

@@ -17,6 +17,7 @@ import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
 import { getConnection } from "typeorm";
 
+//todo: get number of likes
 @Resolver()
 export default class MealResolver {
   @Query(() => [Meal])
