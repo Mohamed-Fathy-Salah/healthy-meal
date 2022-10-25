@@ -18,8 +18,8 @@ import { UserSignin } from "./types/user/user-signin";
 export default class AuthResolver {
   @Query(() => User)
   @UseMiddleware(currentUser)
-  async getCurrentUser(@Ctx() { user }: Context) {
-    return user;
+  async getCurrentUser(@Ctx() { user_id }: Context) {
+    return await User.findOne(user_id);
   }
 
   @Mutation(() => Boolean)
@@ -31,7 +31,7 @@ export default class AuthResolver {
     const createdUser = await User.insert(user);
     const userId = createdUser.identifiers[0].user_id;
 
-    const userJWT = jwt.sign({ id: userId }, "asdf");
+    const userJWT = jwt.sign({ id: userId, email: user.email }, "asdf");
 
     //@ts-ignore
     ctx.req.session.jwt = userJWT;
@@ -60,7 +60,10 @@ export default class AuthResolver {
     if (!areEqual) {
       throw new Error("wrong creds");
     }
-    const userJWT = jwt.sign({ id: existingUser.user_id }, "asdf");
+    const userJWT = jwt.sign(
+      { id: existingUser.user_id, email: user.email },
+      "asdf"
+    );
 
     //@ts-ignore
     ctx.req.session.jwt = userJWT;

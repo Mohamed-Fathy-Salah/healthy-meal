@@ -116,7 +116,7 @@ it("delete like without signin", async () => {
   const { meal_id } = await addMeal(user_id);
   await addLike({ meal_id, user_id });
   const res = await deleteLike({ meal_id });
-  expect(res.errors).toBeDefined();
+  expect(res.data.deleteLike).toBeFalsy();
 });
 
 it("delete like from non existing meal", async () => {

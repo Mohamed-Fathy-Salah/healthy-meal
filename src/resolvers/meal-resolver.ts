@@ -29,7 +29,7 @@ export default class MealResolver {
 
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowingMeals(@Ctx() { user: { user_id } }: Context) {
+  async getFollowingMeals(@Ctx() { user_id }: Context) {
     //todo: one query
     const following = await Follow.find({
       where: { follower_id: user_id },
@@ -46,7 +46,7 @@ export default class MealResolver {
   @UseMiddleware(currentUser)
   async filterMeals(
     @Arg("filter", () => MealFilter) filter: MealFilter,
-    @Ctx() { user: { user_id } }: Context
+    @Ctx() { user_id }: Context
   ) {
     try {
       // todo: cant filter onetomany relations
@@ -118,7 +118,7 @@ export default class MealResolver {
   @UseMiddleware(currentUser)
   async createMeal(
     @Arg("meal", () => CreateMealData) meal: CreateMealData,
-    @Ctx() { user: { user_id } }: Context
+    @Ctx() { user_id }: Context
   ) {
     const ingredients = await Ingredient.findByIds(
       meal.ingredients.map((v) => v.ingredient),

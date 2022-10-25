@@ -26,7 +26,7 @@ export default class LikeResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(currentUser)
   async addLike(
-    @Ctx() { user: { user_id } }: Context,
+    @Ctx() { user_id }: Context,
     @Arg("meal_id", () => String) meal_id: string
   ) {
     const { identifiers } = await Like.insert({ meal_id, user_id });
@@ -36,7 +36,7 @@ export default class LikeResolver {
   @Mutation(() => Boolean)
   @UseMiddleware(currentUser)
   async deleteLike(
-    @Ctx() { user: { user_id } }: Context,
+    @Ctx() { user_id }: Context,
     @Arg("meal_id", () => String) meal_id: string
   ) {
     const { affected } = await Like.delete({ meal_id, user_id });

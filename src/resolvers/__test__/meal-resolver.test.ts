@@ -259,11 +259,16 @@ it("get meals by ingredients", async () => {
   }
 });
 
-it.todo("get meals by prep time");
 
 it.todo("get bookmarked meals");
 
 it.todo("get meals by likes");
+
+it.todo("get meals by calories");
+
+it.todo("get meals by protein");
+
+it.todo("get meals by prep time");
 
 it.todo("delete meal without signup or with wrong user");
 

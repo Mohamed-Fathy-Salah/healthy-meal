@@ -120,7 +120,7 @@ it("get bookmarks without signin", async () => {
   const { user, meal } = await makeMeal();
   await addBookmark({ meal_id: meal.meal_id, user_id: user.user_id });
   const res = await getBookmarks();
-  expect(res.errors).toBeDefined();
+  expect(res.data.getBookmarks).toHaveLength(0);
 });
 
 it("get bookmarks", async () => {
@@ -136,7 +136,7 @@ it("delete bookmark without signin", async () => {
   const { meal, user } = await makeMeal();
   await addBookmark({ meal_id: meal.meal_id, user_id: user.user_id });
   const res = await deleteBookmark({ meal_id: meal.meal_id });
-  expect(res.errors).toBeDefined();
+  expect(res.data.deleteBookmark).toBeFalsy();
 });
 
 it("delete bookmark from non existing meal", async () => {

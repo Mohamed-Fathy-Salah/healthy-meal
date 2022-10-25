@@ -77,7 +77,7 @@ it("update user that does not exist", async () => {
     .post("/")
     .set("Cookie", global.signin())
     .send(mutation.updateUser({ name: "adsf" }));
-  expect(res.body.errors).toBeDefined();
+  expect(res.body.data.updateUser).toBeFalsy();
 });
 
 it("update user with out login", async () => {
@@ -121,7 +121,7 @@ it("delete user that does not exist", async () => {
     .set("Cookie", global.signin())
     .send(mutation.deleteUser());
 
-  expect(body.errors).toBeDefined();
+  expect(body.data.deleteUser).toBeFalsy()
 });
 it("delete user without login", async () => {
   const { body } = await request(global.url)

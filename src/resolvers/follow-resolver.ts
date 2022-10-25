@@ -15,7 +15,7 @@ import { currentUser } from "../middlewares/current-user";
 export default class FollowResolver {
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowers(@Ctx() { user: { user_id } }: Context) {
+  async getFollowers(@Ctx() { user_id }: Context) {
     const res = (
       await Follow.find({
         relations: ["follower"],
@@ -30,7 +30,7 @@ export default class FollowResolver {
 
   @Query(() => [User])
   @UseMiddleware(currentUser)
-  async getFollowing(@Ctx() { user: { user_id } }: Context) {
+  async getFollowing(@Ctx() { user_id }: Context) {
     const res = (
       await Follow.find({
         relations: ["user"],
@@ -47,16 +47,15 @@ export default class FollowResolver {
   @UseMiddleware(currentUser)
   async follow(
     @Arg("email", () => String) email: string,
-    @Ctx() { user }: Context
+    @Ctx() { user_id, email: userEmail }: Context
   ) {
-    if (user.email === email) return false;
-
+    if (userEmail === email) return false;
     const existingUser = await User.findOne({ email }, { select: ["user_id"] });
     if (!existingUser) return false;
 
     const { identifiers } = await Follow.insert({
       user_id: existingUser.user_id,
-      follower_id: user.user_id,
+      follower_id: user_id,
     });
     return identifiers?.length > 0;
   }
@@ -65,14 +64,14 @@ export default class FollowResolver {
   @UseMiddleware(currentUser)
   async unfollow(
     @Arg("email", () => String) email: string,
-    @Ctx() { user }: Context
+    @Ctx() { user_id }: Context
   ) {
     const existingUser = await User.findOne({ email }, { select: ["user_id"] });
     if (!existingUser) return false;
 
     const { affected } = await Follow.delete({
       user_id: existingUser.user_id,
-      follower_id: user.user_id,
+      follower_id: user_id,
     });
     return affected! > 0;
   }

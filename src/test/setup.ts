@@ -6,11 +6,11 @@ import { Server } from "http";
 
 declare global {
   var url: string;
-  var signin: (id?: string) => string[];
+  var signin: (id?: string, email?: string) => string[];
 }
 
 let apolloServer: ApolloServer, db: Connection, httpServer: Server;
-console.clear()
+console.clear();
 beforeAll(async () => {
   const options = await getConnectionOptions("testing");
   db = await createConnection({ ...options, name: "default" });
@@ -35,8 +35,11 @@ afterAll(async () => {
   await db.close();
 });
 
-global.signin = (id?: string) => {
-  const payload = { id: id || "79b97f3d-009b-4ce2-b3e1-4debedf7ea4a" };
+global.signin = (id?: string, email?: string) => {
+  const payload = {
+    id: id || "79b97f3d-009b-4ce2-b3e1-4debedf7ea4a",
+    email: email || "test@test.com",
+  };
   const token = jwt.sign(payload, "asdf");
   const session = { jwt: token };
   const sessionJSON = JSON.stringify(session);
