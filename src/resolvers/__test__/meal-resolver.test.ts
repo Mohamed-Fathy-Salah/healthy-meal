@@ -6,6 +6,7 @@ import Unit from "../../entity/unit";
 import Follow from "../../entity/follow";
 import MealFilter from "../types/meal/meal-filter";
 import IngredientFactor from "../types/meal/ingredient-factor";
+import MealIngredients from "../../entity/meal-ingredients";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -35,111 +36,121 @@ beforeAll(async () => {
 
 const types = ["snack", "breakfast", "dinner"];
 
-const userData = {
-  name: "fad",
-  email: `test@test.com`,
-  password: "123345",
+const addUser = async (email?: string) => {
+  const user = User.create({
+    name: "name",
+    email: email || "test@test.com",
+    password: "1345456",
+  });
+  await user.save();
+  return user;
 };
 
-const mealData = {
-  name: "meal",
-  description: "desc",
-  type: "breakfast",
-  photo: "http://photo.com",
-  prep_time: "10 minutes",
-  steps: "step1",
-  ingredients: [
-    {
-      ingredient: "tomato",
-      factor: 2,
-    },
-    {
-      ingredient: "honey",
-      factor: 5,
-    },
-  ],
-};
-
-const mutation = {
-  createMeal: ({
-    type,
-    tags,
-    ingredients,
-  }: {
-    type?: string;
-    tags?: string[];
-    ingredients?: IngredientFactor[];
-  }) => {
-    type = type || types[0];
-    ingredients = ingredients || mealData.ingredients;
-    return {
+const createMeal = async ({
+  type,
+  tags,
+  ingredients,
+  user_id,
+}: {
+  type?: string;
+  tags?: string[];
+  ingredients?: IngredientFactor[];
+  user_id?: string;
+}) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
       query:
         "mutation createMeal($meal: CreateMealData!){ createMeal(meal: $meal)}",
-      variables: { meal: { ...mealData, type, tags, ingredients } },
-    };
-  },
+      variables: {
+        meal: {
+          name: "meal",
+          description: "desc",
+          type: type || "breakfast",
+          photo: "http://photo.com",
+          prep_time: "10 minutes",
+          steps: "step1",
+          ingredients: ingredients || [
+            {
+              ingredient: "tomato",
+              factor: 2,
+            },
+            {
+              ingredient: "honey",
+              factor: 5,
+            },
+          ],
+          tags,
+        },
+      },
+    });
+  return res.body;
 };
 
-const query = {
-  getUserMeals: (email: string) => ({
+const getUserMeals = async (email: string) => {
+  const res = await request(global.url).post("/").send({
     query:
       "query getUserMeals($email: String!){getUserMeals(email: $email){meal_id, name, type}}",
     variables: { email },
-  }),
-  getFollowingMeals: () => ({
-    query: "query {getFollowingMeals{name, email, meals{name, type}}}",
-  }),
-  filterMeals: (filter: MealFilter) => ({
-    query:
-      "query filterMeals($filter: MealFilter!){filterMeals(filter: $filter){name, type, tags{tag} }}",
-    variables: { filter: { ...filter } },
-  }),
+  });
+  return res.body;
+};
+
+const getFollowingMeals = async (user_id?: string) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
+      query: "query {getFollowingMeals{name, email, meals{name, type}}}",
+    });
+  return res.body;
+};
+
+const filterMeals = async (filter: MealFilter, user_id?: string) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
+      query:
+        "query filterMeals($filter: MealFilter!){filterMeals(filter: $filter){name, type, tags{tag}, mealIngredients{name, factor} }}",
+      variables: { filter: { ...filter } },
+    });
+  return res.body;
 };
 
 it("make meal without signup", async () => {
-  const res = await request(global.url).post("/").send(mutation.createMeal({}));
-  expect(res.body.errors).toBeDefined();
+  const res = await createMeal({});
+  expect(res.errors).toBeDefined();
   const meal = await Meal.find();
   expect(meal).toHaveLength(0);
 });
 
 it("make meal with user doesnot exist", async () => {
-  const res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin())
-    .send(mutation.createMeal({}));
+  const res = await createMeal({ user_id: "adfadfdasf" });
 
-  expect(res.body.errors).toBeDefined();
+  expect(res.errors).toBeDefined();
 
   const meal = await Meal.find();
   expect(meal).toHaveLength(0);
 });
 
 it("make meal with unvalid data", async () => {
-  const user = User.create(userData);
-  await user.save();
+  const user = await addUser();
 
-  const res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user.user_id))
-    .send(mutation.createMeal({ type: "adf" }));
+  const res = await createMeal({ type: "adf", user_id: user.user_id });
 
-  expect(res.body.errors).toBeDefined();
+  expect(res.errors).toBeDefined();
 
   const meal = await Meal.find();
   expect(meal).toHaveLength(0);
 });
 
 it("make meal with valid data", async () => {
-  const user = User.create(userData);
-  await user.save();
+  const user = await addUser();
+  const res = await createMeal({ user_id: user.user_id });
 
-  const res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user.user_id))
-    .send(mutation.createMeal({}));
-
-  expect(res.body.data.createMeal).toBeTruthy();
+  expect(res.data.createMeal).toBeTruthy();
 
   const meals = await Meal.find();
   expect(meals).toHaveLength(1);
@@ -152,163 +163,99 @@ it("make meal with valid data", async () => {
     relations: ["meals"],
     select: ["meals", "name"],
   });
+
+  const mealIngredients = await MealIngredients.find();
+  expect(mealIngredients).toHaveLength(2);
+
   expect(userMeals?.meals[0].meal_id).toBe(meals[0].meal_id);
 });
 
 it("get meals of user", async () => {
-  const user = User.create(userData);
-  await user.save();
+  const user = await addUser();
 
-  await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user.user_id))
-    .send(mutation.createMeal({}));
+  await createMeal({ user_id: user.user_id });
 
-  const res = await request(global.url)
-    .post("/")
-    .send(query.getUserMeals(user.email));
+  const res = await getUserMeals(user.email);
 
-  expect(res.body.data.getUserMeals).toHaveLength(1);
+  expect(res.data.getUserMeals).toHaveLength(1);
 });
 
 it("get meals of user that doesnot exist", async () => {
-  const res = await request(global.url)
-    .post("/")
-    .send(query.getUserMeals("email@email.com"));
+  const res = await getUserMeals("email@email.com");
 
-  expect(res.body.errors).toBeDefined();
+  expect(res.errors).toBeDefined();
 });
 
 it("get meals of following users", async () => {
-  const user1 = User.create(userData);
-  await user1.save();
-  const user2 = User.create({ ...userData, email: "test2@test.com" });
-  await user2.save();
-  const user3 = User.create({ ...userData, email: "test3@test.com" });
-  await user3.save();
+  const user1 = await addUser("test1@test.com");
+  const user2 = await addUser("test2@test.com");
+  const user3 = await addUser("test3@test.com");
 
   await Follow.insert({ user_id: user1.user_id, follower_id: user3.user_id });
   await Follow.insert({ user_id: user2.user_id, follower_id: user3.user_id });
 
-  await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user1.user_id))
-    .send(mutation.createMeal({}));
+  await createMeal({ user_id: user1.user_id });
+  await createMeal({ user_id: user2.user_id, type: "snack" });
 
-  await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user2.user_id))
-    .send(mutation.createMeal({ type: "snack" }));
+  const res = await getFollowingMeals(user3.user_id);
 
-  const res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user3.user_id))
-    .send(query.getFollowingMeals());
-
-  expect(res.body.data.getFollowingMeals).toHaveLength(2);
+  expect(res.data.getFollowingMeals).toHaveLength(2);
 });
 
 it("get meals by tags", async () => {
   for (let i = 0; i < 3; i++) {
-    const user = User.create({ ...userData, email: `test${i}@test.com` });
-    await user.save();
-    for (let j = 0; j < 3; j++) {
-      await request(global.url)
-        .post("/")
-        .set("Cookie", global.signin(user.user_id))
-        .send(mutation.createMeal({ type: "snack", tags: [`tag${j}`] }));
-    }
+    const { user_id } = await addUser(`test${i}@test.com`);
+    for (let j = 0; j < 3; j++)
+      await createMeal({ user_id, type: "snack", tags: [`tag${j}`] });
   }
 
-  const user = User.create({ ...userData, email: `test10@test.com` });
-  await user.save();
+  const { user_id } = await addUser("test10@test.com");
 
   for (let i = 0; i < 3; i++) {
-    const res = await request(global.url)
-      .post("/")
-      .set("Cookie", global.signin(user.user_id))
-      .send(query.filterMeals({ tags: [`tag${i}`] }));
-
-    expect(res.body.data.filterMeals).toHaveLength(3);
+    const res = await filterMeals({ tags: [`tag${i}`] }, user_id);
+    expect(res.data.filterMeals).toHaveLength(3);
   }
 
-  let res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user.user_id))
-    .send(query.filterMeals({ tags: ["tag0", "tag1"] }));
+  let res = await filterMeals({ tags: ["tag0", "tag1"] }, user_id);
+  expect(res.data.filterMeals).toHaveLength(6);
 
-  expect(res.body.data.filterMeals).toHaveLength(6);
+  res = await filterMeals({ tags: ["tag1", "tag2"] }, user_id);
+  expect(res.data.filterMeals).toHaveLength(6);
 
-  res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user.user_id))
-    .send(query.filterMeals({ tags: ["tag1", "tag2"] }));
-
-  expect(res.body.data.filterMeals).toHaveLength(6);
-
-  res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user.user_id))
-    .send(query.filterMeals({ tags: ["tag0", "tag2"] }));
-
-  expect(res.body.data.filterMeals).toHaveLength(6);
+  res = await filterMeals({ tags: ["tag0", "tag2"] }, user_id);
+  expect(res.data.filterMeals).toHaveLength(6);
 });
 
 it("get meals by type", async () => {
   for (let i = 0; i < 3; i++) {
-    const user = User.create({ ...userData, email: `test${i}@test.com` });
-    await user.save();
-    for (let j = 0; j < 3; j++) {
-      await request(global.url)
-        .post("/")
-        .set("Cookie", global.signin(user.user_id))
-        .send(mutation.createMeal({ type: types[i] }));
-    }
+    const { user_id } = await addUser(`test${i}@test.com`);
+    for (let j = 0; j < 3; j++) await createMeal({ user_id, type: types[i] });
   }
 
-  const user = User.create({ ...userData, email: `test10@test.com` });
-  await user.save();
+  const { user_id } = await addUser("test10@test.com");
 
   for (let i = 0; i < 3; i++) {
-    const res = await request(global.url)
-      .post("/")
-      .set("Cookie", global.signin(user.user_id))
-      .send(query.filterMeals({ type: types[i] }));
-
-    expect(res.body.data.filterMeals).toHaveLength(3);
+    const res = await filterMeals({ type: types[i] }, user_id);
+    expect(res.data.filterMeals).toHaveLength(3);
   }
 });
 
-it.only("get meals by ingredients", async () => {
+it("get meals by ingredients", async () => {
   const ings = ["tomato", "honey"];
   for (let i = 0; i < 3; i++) {
-    const user = User.create({ ...userData, email: `test${i}@test.com` });
-    await user.save();
-    for (let j = 0; j < 3; j++) {
-      await request(global.url)
-        .post("/")
-        .set("Cookie", global.signin(user.user_id))
-        .send(
-          mutation.createMeal({
-            ingredients: [{ ingredient: ings[j % 2], factor: j + 1 }],
-          })
-        );
-    }
+    const { user_id } = await addUser(`test${i}@test.com`);
+    for (let j = 0; j < 3; j++)
+      await createMeal({
+        user_id,
+        ingredients: [{ ingredient: ings[j % 2], factor: j + 1 }],
+      });
   }
 
-  //todo : not saved in table for some reason
-  console.error(await Meal.find({relations:['mealIngredients']}));
-
-  const user = User.create({ ...userData, email: `test10@test.com` });
-  await user.save();
+  const { user_id } = await addUser("test10@test.com");
 
   for (let i = 0; i < 3; i++) {
-    const res = await request(global.url)
-      .post("/")
-      .set("Cookie", global.signin(user.user_id))
-      .send(query.filterMeals({ ingredients: [ings[i % 2]] }));
-
-    expect(res.body.data.filterMeals).toHaveLength(3);
+    const res = await filterMeals({ ingredients: [ings[i % 2]] }, user_id);
+    expect(res.data.filterMeals).toHaveLength(-3 * (i % 2) + 6);
   }
 });
 

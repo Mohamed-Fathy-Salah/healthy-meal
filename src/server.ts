@@ -18,7 +18,14 @@ export const createApolloServer = async (port: number | string) => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [AuthResolver, UserResolver, FollowResolver, MealResolver, LikeResolver, BookmarkResolver],
+      resolvers: [
+        AuthResolver,
+        UserResolver,
+        FollowResolver,
+        MealResolver,
+        LikeResolver,
+        BookmarkResolver,
+      ],
       validate: true,
     }),
     context: ({ req, res }) => ({ req, res }),

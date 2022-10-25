@@ -16,6 +16,7 @@ import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
 import { getConnection } from "typeorm";
+import MealIngredients from "../entity/meal-ingredients";
 
 //todo: get number of likes
 @Resolver()
@@ -61,7 +62,12 @@ export default class MealResolver {
 
       let query = getConnection()
         .createQueryBuilder()
-        .select(["meal", "user.email", "mealingredients.name", "mealingredients.factor"])
+        .select([
+          "meal",
+          "user.email",
+          "mealingredients.name",
+          "mealingredients.factor",
+        ])
         .from(Meal, "meal");
 
       if (filter.bookmarks)
@@ -90,22 +96,14 @@ export default class MealResolver {
       if (filter.type)
         query = query.where("meal.type = :type", { type: filter.type });
 
-      console.error(
-        await query
-          .leftJoin("meal.mealIngredients", "mealingredients")
-          .getMany()
-      );
-
-      //query = filter.ingredients
-        //? query.innerJoinAndSelect(
-            //"meal.mealIngredients",
-            //"mealingredients",
-            //"mealingredients.name IN (:...ingredients)",
-            //{ ingredients: filter.ingredients }
-          //)
-        //: query.leftJoinAndSelect("meal.mealIngredients", "mealingredients");
-
-      console.error(await query.getMany());
+      query = filter.ingredients
+        ? query.innerJoin(
+            "meal.mealIngredients",
+            "mealingredients",
+            "mealingredients.name IN (:...ingredients)",
+            { ingredients: filter.ingredients }
+          )
+        : query.leftJoin("meal.mealIngredients", "mealingredients");
 
       const res = await query.getMany();
 
@@ -142,7 +140,8 @@ export default class MealResolver {
       totalCalories += calories * factor;
     }
 
-    const { identifiers } = await Meal.insert({
+    //todo: user transaction
+    let { identifiers } = await Meal.insert({
       name: meal.name,
       description: meal.description,
       type: meal.type,
@@ -150,18 +149,31 @@ export default class MealResolver {
       prep_time: meal.prep_time,
       steps: meal.steps,
       user_id,
-      mealIngredients: ingredients,
       fat: totalFat,
       carb: totalCarb,
       protein: totalProtein,
       calories: totalCalories,
     });
 
-    if (meal.tags)
-      await MealTags.insert(
-        meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
-      );
+    if (identifiers.length === 0) return false;
 
-    return identifiers.length > 0;
+    ({ identifiers } = await MealIngredients.insert(
+      meal.ingredients.map((v) => ({
+        name: v.ingredient,
+        factor: v.factor,
+        meal_id: identifiers[0].meal_id,
+      }))
+    ));
+
+    if (identifiers.length !== meal.ingredients.length) return false;
+
+    if (meal.tags) {
+      ({ identifiers } = await MealTags.insert(
+        meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
+      ));
+      return identifiers.length !== meal.tags.length;
+    }
+
+    return true;
   }
 }
