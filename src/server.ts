@@ -1,24 +1,31 @@
 import express from "express";
-import session from "express-session";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
-import { UserResolver } from "./resolvers/user-resolver";
+import cookieSession from "cookie-session";
+import AuthResolver from "./resolvers/auth-resolver";
+import UserResolver from "./resolvers/user-resolver";
+import FollowResolver from "./resolvers/follow-resolver";
+import MealResolver from "./resolvers/meal-resolver";
+import LikeResolver from "./resolvers/like-resolver";
+import BookmarkResolver from "./resolvers/bookmark-resolver";
 
 export const createApolloServer = async (port: number | string) => {
   const app = express();
+
   app.set("trust proxy", 1);
 
-  app.use(
-    session({
-      secret: "asdf",
-      resave: true,
-      saveUninitialized: true,
-      cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 },
-    })
-  );
+  app.use(cookieSession({ signed: false }));
+
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [UserResolver],
+      resolvers: [
+        AuthResolver,
+        UserResolver,
+        FollowResolver,
+        MealResolver,
+        LikeResolver,
+        BookmarkResolver,
+      ],
       validate: true,
     }),
     context: ({ req, res }) => ({ req, res }),
@@ -26,9 +33,9 @@ export const createApolloServer = async (port: number | string) => {
 
   apolloServer.applyMiddleware({ app, cors: false });
 
-  app.listen(port, () => {
+  const httpServer = app.listen(port, () => {
     console.log(`server started at http://localhost:${port}/graphql`);
   });
 
-  return apolloServer;
+  return { apolloServer, httpServer };
 };

@@ -1,6 +1,6 @@
 import "reflect-metadata";
-import { createConnection, getConnectionOptions } from "typeorm";
 import { createApolloServer } from "./server";
+import { createConnection, getConnectionOptions } from "typeorm";
 
 (async () => {
   const options = await getConnectionOptions(
