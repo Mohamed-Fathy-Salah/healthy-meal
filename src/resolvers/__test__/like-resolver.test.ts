@@ -23,7 +23,7 @@ const addMeal = async (user_id: string) => {
     fat: 10,
     protein: 10,
     carb: 10,
-    prep_time: "10",
+    prep_time: 10,
     user_id,
     steps: "123",
   });
