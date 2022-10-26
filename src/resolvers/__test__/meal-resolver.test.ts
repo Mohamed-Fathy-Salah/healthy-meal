@@ -7,6 +7,9 @@ import Follow from "../../entity/follow";
 import MealFilter from "../types/meal/meal-filter";
 import IngredientFactor from "../types/meal/ingredient-factor";
 import MealIngredients from "../../entity/meal-ingredients";
+import Bookmark from "../../entity/bookmark";
+import Like from "../../entity/like";
+import { UpdateMealData } from "../types/meal/update-meal-data";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -51,11 +54,13 @@ const createMeal = async ({
   tags,
   ingredients,
   user_id,
+  prep_time,
 }: {
   type?: string;
   tags?: string[];
   ingredients?: IngredientFactor[];
   user_id?: string;
+  prep_time?: number;
 }) => {
   const res = await request(global.url)
     .post("/")
@@ -69,7 +74,7 @@ const createMeal = async ({
           description: "desc",
           type: type || "breakfast",
           photo: "http://photo.com",
-          prep_time: "10 minutes",
+          prep_time: prep_time || 10,
           steps: "step1",
           ingredients: ingredients || [
             {
@@ -115,6 +120,36 @@ const filterMeals = async (filter: MealFilter, user_id?: string) => {
       query:
         "query filterMeals($filter: MealFilter!){filterMeals(filter: $filter){name, type, tags{tag}, mealIngredients{name, factor} }}",
       variables: { filter: { ...filter } },
+    });
+  return res.body;
+};
+
+const deleteMeal = async ({
+  meal_id,
+  user_id,
+}: {
+  user_id?: string;
+  meal_id?: string;
+}) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
+      query:
+        "mutation deleteMeal($meal_id: String!){deleteMeal(meal_id: $meal_id)}",
+      variables: { meal_id },
+    });
+  return res.body;
+};
+
+const updateMeal = async (meal: UpdateMealData, user_id?: string) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
+      query:
+        "mutation updateMeal($meal: UpdateMealData!){updateMeal(meal: $meal)}",
+      variables: { meal },
     });
   return res.body;
 };
@@ -259,25 +294,159 @@ it("get meals by ingredients", async () => {
   }
 });
 
+it("get bookmarked meals", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id });
 
-it.todo("get bookmarked meals");
+  const user = await addUser("test2@test.com");
+  const meal = (await Meal.find())[0];
 
-it.todo("get meals by likes");
+  let res = await filterMeals({ bookmarks: true }, user.user_id);
+  expect(res.data.filterMeals).toHaveLength(0);
 
-it.todo("get meals by calories");
+  await Bookmark.insert({
+    user_id: user.user_id,
+    meal_id: meal.meal_id,
+  });
 
-it.todo("get meals by protein");
+  res = await filterMeals({ bookmarks: true }, user.user_id);
+  expect(res.data.filterMeals).toHaveLength(1);
+});
 
-it.todo("get meals by prep time");
+it("get meals by likes oredered desc", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id });
 
-it.todo("delete meal without signup or with wrong user");
+  const user = await addUser("test2@test.com");
+  const meal = (await Meal.find())[0];
 
-it.todo("delete non existing meal");
+  let res = await filterMeals({ likes: true }, user.user_id);
+  expect(res.data.filterMeals).toHaveLength(0);
 
-it.todo("delete meal");
+  await Like.insert({
+    user_id: user.user_id,
+    meal_id: meal.meal_id,
+  });
 
-it.todo("update meal without signup or with wrong user");
+  res = await filterMeals({ likes: true }, user.user_id);
+  expect(res.data.filterMeals).toHaveLength(1);
+});
 
-it.todo("update non existing meal");
+it("get meals by calories", async () => {
+  let { user_id } = await addUser();
+  for (let i = 1; i <= 5; i++) {
+    await createMeal({
+      user_id,
+      ingredients: [{ ingredient: "tomato", factor: i }],
+    });
+  }
+  ({ user_id } = await addUser("test2@test.com"));
+  let res = await filterMeals({ calories: { start: 20 } });
+  expect(res.data.filterMeals).toHaveLength(4);
+  res = await filterMeals({ calories: { end: 40 } });
+  expect(res.data.filterMeals).toHaveLength(4);
+  res = await filterMeals({ calories: { start: 20, end: 40 } });
+  expect(res.data.filterMeals).toHaveLength(3);
+  res = await filterMeals({ calories: { start: 60, end: 80 } });
+  expect(res.data.filterMeals).toHaveLength(0);
+  res = await filterMeals({ calories: { start: 60, end: 30 } });
+  expect(res.data.filterMeals).toHaveLength(0);
+});
 
-it.todo("update meal");
+it("get meals by protein", async () => {
+  let { user_id } = await addUser();
+  for (let i = 1; i <= 5; i++) {
+    await createMeal({
+      user_id,
+      ingredients: [{ ingredient: "tomato", factor: i }],
+    });
+  }
+  ({ user_id } = await addUser("test2@test.com"));
+  let res = await filterMeals({ protein: { start: 6 } });
+  expect(res.data.filterMeals).toHaveLength(4);
+  res = await filterMeals({ protein: { end: 12 } });
+  expect(res.data.filterMeals).toHaveLength(4);
+  res = await filterMeals({ protein: { start: 6, end: 12 } });
+  expect(res.data.filterMeals).toHaveLength(3);
+  res = await filterMeals({ protein: { start: 16, end: 80 } });
+  expect(res.data.filterMeals).toHaveLength(0);
+  res = await filterMeals({ protein: { start: 16, end: 3 } });
+  expect(res.data.filterMeals).toHaveLength(0);
+});
+
+it("get meals by prep time", async () => {
+  let { user_id } = await addUser();
+  for (let i = 1; i <= 5; i++) await createMeal({ user_id, prep_time: i * 10 });
+  ({ user_id } = await addUser("test2@test.com"));
+  let res = await filterMeals({ prep_time: { start: 20 } });
+  expect(res.data.filterMeals).toHaveLength(4);
+  res = await filterMeals({ prep_time: { end: 40 } });
+  expect(res.data.filterMeals).toHaveLength(4);
+  res = await filterMeals({ prep_time: { start: 20, end: 40 } });
+  expect(res.data.filterMeals).toHaveLength(3);
+  res = await filterMeals({ prep_time: { start: 51, end: 60 } });
+  expect(res.data.filterMeals).toHaveLength(0);
+  res = await filterMeals({ prep_time: { start: 30, end: 10 } });
+  expect(res.data.filterMeals).toHaveLength(0);
+});
+
+it.todo("get meals by following");
+
+it("delete meal without signup or with wrong user", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id });
+
+  const meal = (await Meal.find())[0];
+
+  const user = await addUser("test2@test.com");
+  let res = await deleteMeal({ meal_id: meal.meal_id, user_id: user.user_id });
+  expect(res.data.deleteMeal).toBeFalsy();
+  expect(await Meal.find()).toHaveLength(1);
+
+  res = await deleteMeal({ meal_id: meal.meal_id });
+  expect(res.data.deleteMeal).toBeFalsy();
+  expect(await Meal.find()).toHaveLength(1);
+});
+
+it("delete non existing meal", async () => {
+  const { user_id } = await addUser();
+  const res = await deleteMeal({ meal_id: "adfadf", user_id });
+  expect(res.data.deleteMeal).toBeFalsy();
+});
+
+it("delete meal", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id });
+  const meal = (await Meal.find())[0];
+
+  const res = await deleteMeal({ meal_id: meal.meal_id, user_id });
+  expect(res.data.deleteMeal).toBeTruthy();
+  expect(await Meal.find()).toHaveLength(0);
+});
+
+it("update meal without signup or with wrong user", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id });
+
+  const meal = (await Meal.find())[0];
+
+  let res = await updateMeal({ meal_id: meal.meal_id, addTags: ["hi"] });
+  expect(res.errors).toBeDefined()
+  res = await updateMeal(
+    { meal_id: meal.meal_id, addTags: ["hi"] },
+    "adsfadsf"
+  );
+  expect(res.errors).toBeDefined()
+});
+
+it("update non existing meal", async () => {
+  const { user_id } = await addUser();
+  const res = await updateMeal({ meal_id: "adfadf", prep_time: 50 }, user_id);
+  expect(res.errors).toBeDefined()
+});
+
+it.todo("update meal ingredients");
+
+it.todo("update meal tags");
+
+it.todo("update meal scalar data");

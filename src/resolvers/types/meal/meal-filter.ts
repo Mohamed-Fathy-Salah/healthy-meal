@@ -26,9 +26,8 @@ export default class MealFilter {
   @Field(() => FilterRange, { nullable: true })
   carb?: FilterRange;
 
-  @Field(() => String, { nullable: true })
-  //todo: interval
-  prep_time?: string;
+  @Field(() => FilterRange, { nullable: true })
+  prep_time?: FilterRange;
 
   @Field(() => [String], { nullable: true })
   ingredients?: string[];
@@ -38,4 +37,10 @@ export default class MealFilter {
 
   @Field(() => Boolean, { defaultValue: false })
   bookmarks?: boolean;
+
+  @Field(() => Boolean, { defaultValue: false })
+  likes?: boolean;
+
+  @Field(() => Boolean, { defaultValue: false })
+  following?: boolean;
 }

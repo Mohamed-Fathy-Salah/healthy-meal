@@ -54,9 +54,8 @@ export default class Meal extends BaseEntity {
   carb: number;
 
   @Field()
-  //todo: interval
-  @Column("text")
-  prep_time: string;
+  @Column("int")
+  prep_time: number;
 
   @Column("uuid", { select: false })
   user_id: string;

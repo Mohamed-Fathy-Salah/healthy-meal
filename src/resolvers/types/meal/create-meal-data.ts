@@ -1,4 +1,4 @@
-import { IsIn, IsNotEmpty, IsUrl } from "class-validator";
+import { IsIn, IsNotEmpty, IsNumber, IsUrl } from "class-validator";
 import { Field, InputType } from "type-graphql";
 import IngredientFactor from "./ingredient-factor";
 
@@ -21,8 +21,8 @@ export default class CreateMealData {
   photo: string;
 
   @Field()
-  //todo: interval
-  prep_time: string;
+  @IsNumber()
+  prep_time: number;
 
   @Field()
   @IsNotEmpty()

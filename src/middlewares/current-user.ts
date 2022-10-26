@@ -3,7 +3,9 @@ import { MiddlewareFn } from "type-graphql";
 import jwt from "jsonwebtoken";
 
 export const currentUser: MiddlewareFn = async ({ context }, next) => {
-  context.user_id = jwt.verify(context.req.session.jwt, "asdf")["id"];
-  context.email = jwt.verify(context.req.session.jwt, "asdf")["email"];
-  await next();
+  if (context.req.session.jwt) {
+    context.user_id = jwt.verify(context.req.session.jwt, "asdf")["id"];
+    context.email = jwt.verify(context.req.session.jwt, "asdf")["email"];
+    await next();
+  }
 };

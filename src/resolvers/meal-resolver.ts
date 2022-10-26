@@ -17,6 +17,8 @@ import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
 import { getConnection } from "typeorm";
 import MealIngredients from "../entity/meal-ingredients";
+import { UpdateMealData } from "./types/meal/update-meal-data";
+import IngredientFactor from "./types/meal/ingredient-factor";
 
 //todo: get number of likes
 @Resolver()
@@ -78,6 +80,14 @@ export default class MealResolver {
           { user_id }
         );
 
+      if (filter.likes)
+        query = query.innerJoin(
+          "meal.likes",
+          "like",
+          "like.user_id =:user_id",
+          { user_id }
+        );
+
       query = filter.emails
         ? query.innerJoin("meal.user", "user", "user.email IN (:...emails)", {
             emails: filter.emails,
@@ -105,6 +115,31 @@ export default class MealResolver {
           )
         : query.leftJoin("meal.mealIngredients", "mealingredients");
 
+      if (filter.calories)
+        query = query
+          .where("meal.calories >= :start", { start: filter.calories.start })
+          .andWhere("meal.calories <= :end", { end: filter.calories.end });
+
+      if (filter.protein)
+        query = query
+          .where("meal.protein >= :start", { start: filter.protein.start })
+          .andWhere("meal.protein <= :end", { end: filter.protein.end });
+
+      if (filter.fat)
+        query = query
+          .where("meal.fat >= :start", { start: filter.fat.start })
+          .andWhere("meal.fat <= :end", { end: filter.fat.end });
+
+      if (filter.carb)
+        query = query
+          .where("meal.carb >= :start", { start: filter.carb.start })
+          .andWhere("meal.carb <= :end", { end: filter.carb.end });
+
+      if (filter.prep_time)
+        query = query
+          .where("meal.prep_time >= :start", { start: filter.prep_time.start })
+          .andWhere("meal.prep_time <= :end", { end: filter.prep_time.end });
+
       const res = await query.getMany();
 
       return res;
@@ -114,14 +149,9 @@ export default class MealResolver {
     return [];
   }
 
-  @Mutation(() => Boolean)
-  @UseMiddleware(currentUser)
-  async createMeal(
-    @Arg("meal", () => CreateMealData) meal: CreateMealData,
-    @Ctx() { user_id }: Context
-  ) {
+  async calculateNutrition(mealIngredients: IngredientFactor[]) {
     const ingredients = await Ingredient.findByIds(
-      meal.ingredients.map((v) => v.ingredient),
+      mealIngredients.map((v) => v.ingredient),
       {
         select: ["name", "fat", "carb", "protein", "calories"],
       }
@@ -129,7 +159,7 @@ export default class MealResolver {
     let [totalFat, totalCarb, totalProtein, totalCalories] = [0, 0, 0, 0];
 
     const ingredientsFactor: { [key: string]: number } = {};
-    for (const { ingredient, factor } of meal.ingredients)
+    for (const { ingredient, factor } of mealIngredients)
       ingredientsFactor[ingredient] = factor;
 
     for (const { name, fat, carb, protein, calories } of ingredients) {
@@ -139,6 +169,18 @@ export default class MealResolver {
       totalProtein += protein * factor;
       totalCalories += calories * factor;
     }
+
+    return { totalFat, totalCarb, totalProtein, totalCalories };
+  }
+
+  @Mutation(() => Boolean)
+  @UseMiddleware(currentUser)
+  async createMeal(
+    @Arg("meal", () => CreateMealData) meal: CreateMealData,
+    @Ctx() { user_id }: Context
+  ) {
+    const { totalCalories, totalProtein, totalCarb, totalFat } =
+      await this.calculateNutrition(meal.ingredients);
 
     //todo: user transaction
     let { identifiers } = await Meal.insert({
@@ -175,5 +217,52 @@ export default class MealResolver {
     }
 
     return true;
+  }
+
+  @Mutation(() => Boolean)
+  @UseMiddleware(currentUser)
+  async deleteMeal(
+    @Arg("meal_id", () => String) meal_id: string,
+    @Ctx() { user_id }: Context
+  ) {
+    const { affected } = await Meal.delete({ meal_id, user_id });
+    return affected === 1;
+  }
+
+  @Mutation(() => Boolean)
+  @UseMiddleware(currentUser)
+  async updateMeal(
+    @Arg("meal", () => UpdateMealData) meal: UpdateMealData,
+    @Ctx() { user_id }: Context
+  ) {
+    //todo: transaction
+    const updateValues = meal.ingredients
+      ? { ...meal, ...(await this.calculateNutrition(meal.ingredients)) }
+      : { ...meal };
+
+    if (
+      meal.ingredients ||
+      meal.prep_time ||
+      meal.name ||
+      meal.type ||
+      meal.photo ||
+      meal.steps ||
+      meal.description
+    )
+      await Meal.update({ meal_id: meal.meal_id, user_id }, updateValues);
+
+    if (meal.removeTags)
+      await getConnection()
+        .createQueryBuilder()
+        .delete()
+        .from(MealTags)
+        .where("mealtags.meal_id = :meal_id", { meal_id: meal.meal_id })
+        .andWhere("mealtags.tag IN (...tags)", { tags: meal.removeTags })
+        .execute();
+
+    if (meal.addTags)
+      await MealTags.insert(
+        meal.addTags.map((v) => ({ meal_id: meal.meal_id, tag: v }))
+      );
   }
 }

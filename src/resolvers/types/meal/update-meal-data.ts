@@ -1,10 +1,14 @@
-import { IsDate, IsIn, IsNotEmpty, IsUrl } from "class-validator";
+import { IsIn, IsNotEmpty, IsNumber, IsUrl, IsUUID } from "class-validator";
 import Meal from "../../../entity/meal";
-import { Field, InputType } from "type-graphql";
+import { Field, InputType, Int } from "type-graphql";
 import IngredientFactor from "./ingredient-factor";
 
 @InputType()
 export class UpdateMealData implements Partial<Meal> {
+  @Field()
+  @IsUUID()
+  meal_id: string;
+
   @Field({ nullable: true })
   @IsNotEmpty()
   name?: string;
@@ -21,10 +25,9 @@ export class UpdateMealData implements Partial<Meal> {
   @IsUrl()
   photo?: string;
 
-  @Field({ nullable: true })
-  //todo: interval
-  @IsDate()
-  prep_time?: string;
+  @Field(() => Int, { nullable: true })
+  @IsNumber()
+  prep_time?: number;
 
   @Field({ nullable: true })
   @IsNotEmpty()
@@ -32,4 +35,10 @@ export class UpdateMealData implements Partial<Meal> {
 
   @Field(() => [IngredientFactor], { nullable: true })
   ingredients?: IngredientFactor[];
+
+  @Field(() => [String], { nullable: true })
+  addTags?: string[];
+
+  @Field(() => [String], { nullable: true })
+  removeTags?: string[];
 }
