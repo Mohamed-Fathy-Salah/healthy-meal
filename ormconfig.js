@@ -1,10 +1,11 @@
 module.exports = [
   {
     name: "testing",
-    type: "better-sqlite3",
+    type: "sqlite",
     database: ":memory:",
     entities: ["src/entity/**/*.ts"],
     synchronize: true,
+    dropSchema: true,
   },
   {
     name: "development",
