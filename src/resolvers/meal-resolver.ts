@@ -50,103 +50,92 @@ export default class MealResolver {
     @Arg("filter", () => MealFilter) filter: MealFilter,
     @Ctx() { user_id }: Context
   ) {
-    try {
-      // todo: cant filter onetomany relations
-      // how to filter from each table?
-      //
-      //SELECT meal.*, user.name, user.email, meal_tags.tag, meal_ingredients.name FROM meal
-      //INNER JOIN bookmark ON bookmark.meal_id = meal.meal_id AND bookmark.user_id = ${userId}
-      //INNER JOIN meal_tags ON meal_tags.meal_id = meal.meal_id AND meal_tag.tag IN (${tags})
-      //INNER JOIN meal_ingredients ON meal.meal_id = meal_ingredients.meal_id AND meal_ingredients.name IN (${ingredients})
-      //
-      //todo: like, type, calories, fat, protein, carb, prep_time
-      //todo: innerjoin apply condition when corresponding filter exists
+    let query = getConnection()
+      .createQueryBuilder()
+      .select([
+        "meal",
+        "user.email",
+        "mealingredients.name",
+        "mealingredients.factor",
+      ])
+      .from(Meal, "meal");
 
-      let query = getConnection()
-        .createQueryBuilder()
-        .select([
-          "meal",
-          "user.email",
-          "mealingredients.name",
-          "mealingredients.factor",
-        ])
-        .from(Meal, "meal");
+    if (filter.bookmarks)
+      query = query.innerJoin(
+        "meal.bookmarks",
+        "bookmark",
+        "bookmark.user_id =:user_id",
+        { user_id }
+      );
 
-      if (filter.bookmarks)
-        query = query.innerJoin(
-          "meal.bookmarks",
-          "bookmark",
-          "bookmark.user_id =:user_id",
-          { user_id }
-        );
+    if (filter.likes)
+      query = query.innerJoin("meal.likes", "like", "like.user_id =:user_id", {
+        user_id,
+      });
 
-      if (filter.likes)
-        query = query.innerJoin(
-          "meal.likes",
-          "like",
-          "like.user_id =:user_id",
-          { user_id }
-        );
+    query = filter.emails
+      ? query.innerJoin("meal.user", "user", "user.email IN (:...emails)", {
+          emails: filter.emails,
+        })
+      : query.leftJoin("meal.user", "user");
 
-      query = filter.emails
-        ? query.innerJoin("meal.user", "user", "user.email IN (:...emails)", {
-            emails: filter.emails,
-          })
-        : query.leftJoin("meal.user", "user");
+    if (filter.following)
+      query = query.innerJoin(
+        "user.followers",
+        "follow",
+        "follow.follower_id = :follower_id",
+        { follower_id: user_id }
+      );
 
-      query = filter.tags
-        ? query.innerJoinAndSelect(
-            "meal.tags",
-            "mealtags",
-            "mealtags.tag IN (:...tags)",
-            { tags: filter.tags }
-          )
-        : query.leftJoinAndSelect("meal.tags", "mealtags");
+    query = filter.tags
+      ? query.innerJoinAndSelect(
+          "meal.tags",
+          "mealtags",
+          "mealtags.tag IN (:...tags)",
+          { tags: filter.tags }
+        )
+      : query.leftJoinAndSelect("meal.tags", "mealtags");
 
-      if (filter.type)
-        query = query.where("meal.type = :type", { type: filter.type });
+    query = filter.ingredients
+      ? query.innerJoin(
+          "meal.mealIngredients",
+          "mealingredients",
+          "mealingredients.name IN (:...ingredients)",
+          { ingredients: filter.ingredients }
+        )
+      : query.leftJoin("meal.mealIngredients", "mealingredients");
 
-      query = filter.ingredients
-        ? query.innerJoin(
-            "meal.mealIngredients",
-            "mealingredients",
-            "mealingredients.name IN (:...ingredients)",
-            { ingredients: filter.ingredients }
-          )
-        : query.leftJoin("meal.mealIngredients", "mealingredients");
+    if (filter.type)
+      query = query.where("meal.type = :type", { type: filter.type });
 
-      if (filter.calories)
-        query = query
-          .where("meal.calories >= :start", { start: filter.calories.start })
-          .andWhere("meal.calories <= :end", { end: filter.calories.end });
+    if (filter.calories)
+      query = query
+        .where("meal.calories >= :start", { start: filter.calories.start })
+        .andWhere("meal.calories <= :end", { end: filter.calories.end });
 
-      if (filter.protein)
-        query = query
-          .where("meal.protein >= :start", { start: filter.protein.start })
-          .andWhere("meal.protein <= :end", { end: filter.protein.end });
+    if (filter.protein)
+      query = query
+        .where("meal.protein >= :start", { start: filter.protein.start })
+        .andWhere("meal.protein <= :end", { end: filter.protein.end });
 
-      if (filter.fat)
-        query = query
-          .where("meal.fat >= :start", { start: filter.fat.start })
-          .andWhere("meal.fat <= :end", { end: filter.fat.end });
+    if (filter.fat)
+      query = query
+        .where("meal.fat >= :start", { start: filter.fat.start })
+        .andWhere("meal.fat <= :end", { end: filter.fat.end });
 
-      if (filter.carb)
-        query = query
-          .where("meal.carb >= :start", { start: filter.carb.start })
-          .andWhere("meal.carb <= :end", { end: filter.carb.end });
+    if (filter.carb)
+      query = query
+        .where("meal.carb >= :start", { start: filter.carb.start })
+        .andWhere("meal.carb <= :end", { end: filter.carb.end });
 
-      if (filter.prep_time)
-        query = query
-          .where("meal.prep_time >= :start", { start: filter.prep_time.start })
-          .andWhere("meal.prep_time <= :end", { end: filter.prep_time.end });
+    if (filter.prep_time)
+      query = query
+        .where("meal.prep_time >= :start", { start: filter.prep_time.start })
+        .andWhere("meal.prep_time <= :end", { end: filter.prep_time.end });
 
-      const res = await query.getMany();
+    const res = await query.getMany();
 
-      return res;
-    } catch (e) {
-      console.error(e);
-    }
-    return [];
+    return res;
   }
 
   async calculateNutrition(mealIngredients: IngredientFactor[]) {
@@ -170,7 +159,12 @@ export default class MealResolver {
       totalCalories += calories * factor;
     }
 
-    return { totalFat, totalCarb, totalProtein, totalCalories };
+    return {
+      fat: totalFat,
+      carb: totalCarb,
+      protein: totalProtein,
+      calories: totalCalories,
+    };
   }
 
   @Mutation(() => Boolean)
@@ -179,8 +173,9 @@ export default class MealResolver {
     @Arg("meal", () => CreateMealData) meal: CreateMealData,
     @Ctx() { user_id }: Context
   ) {
-    const { totalCalories, totalProtein, totalCarb, totalFat } =
-      await this.calculateNutrition(meal.ingredients);
+    const { calories, protein, carb, fat } = await this.calculateNutrition(
+      meal.ingredients
+    );
 
     //todo: user transaction
     let { identifiers } = await Meal.insert({
@@ -191,10 +186,10 @@ export default class MealResolver {
       prep_time: meal.prep_time,
       steps: meal.steps,
       user_id,
-      fat: totalFat,
-      carb: totalCarb,
-      protein: totalProtein,
-      calories: totalCalories,
+      fat,
+      carb,
+      protein,
+      calories,
     });
 
     if (identifiers.length === 0) return false;
@@ -236,9 +231,30 @@ export default class MealResolver {
     @Ctx() { user_id }: Context
   ) {
     //todo: transaction
-    const updateValues = meal.ingredients
-      ? { ...meal, ...(await this.calculateNutrition(meal.ingredients)) }
-      : { ...meal };
+    const userMeal = await Meal.findOne(meal.meal_id, {
+      select: ["meal_id", "user_id"],
+    });
+    if (!userMeal || userMeal.user_id !== user_id) return false;
+    let updateValues = { ...meal };
+
+    if (meal.ingredients) {
+      const [_, nutrition] = await Promise.all([
+        MealIngredients.delete({ meal_id: meal.meal_id }),
+        this.calculateNutrition(meal.ingredients),
+      ]);
+      await MealIngredients.insert(
+        meal.ingredients.map((v) => ({
+          name: v.ingredient,
+          factor: v.factor,
+          meal_id: meal.meal_id,
+        }))
+      ),
+        (updateValues = { ...meal, ...nutrition });
+    }
+
+    delete updateValues.ingredients;
+    delete updateValues.addTags;
+    delete updateValues.removeTags;
 
     if (
       meal.ingredients ||
@@ -249,20 +265,21 @@ export default class MealResolver {
       meal.steps ||
       meal.description
     )
-      await Meal.update({ meal_id: meal.meal_id, user_id }, updateValues);
+      await Meal.update(meal.meal_id, updateValues);
 
     if (meal.removeTags)
       await getConnection()
         .createQueryBuilder()
         .delete()
         .from(MealTags)
-        .where("mealtags.meal_id = :meal_id", { meal_id: meal.meal_id })
-        .andWhere("mealtags.tag IN (...tags)", { tags: meal.removeTags })
+        .where("meal_tags.meal_id = :meal_id", { meal_id: meal.meal_id })
+        .andWhere("meal_tags.tag IN (:...tags)", { tags: meal.removeTags })
         .execute();
 
     if (meal.addTags)
       await MealTags.insert(
         meal.addTags.map((v) => ({ meal_id: meal.meal_id, tag: v }))
       );
+    return true;
   }
 }

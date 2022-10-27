@@ -10,6 +10,7 @@ import MealIngredients from "../../entity/meal-ingredients";
 import Bookmark from "../../entity/bookmark";
 import Like from "../../entity/like";
 import { UpdateMealData } from "../types/meal/update-meal-data";
+import MealTags from "../../entity/meal-tags";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -143,14 +144,17 @@ const deleteMeal = async ({
 };
 
 const updateMeal = async (meal: UpdateMealData, user_id?: string) => {
-  const res = await request(global.url)
-    .post("/")
-    .set("Cookie", global.signin(user_id))
-    .send({
-      query:
-        "mutation updateMeal($meal: UpdateMealData!){updateMeal(meal: $meal)}",
-      variables: { meal },
-    });
+  const query = {
+    query:
+      "mutation updateMeal($meal: UpdateMealData!){updateMeal(meal: $meal)}",
+    variables: { meal },
+  };
+  const res = user_id
+    ? await request(global.url)
+        .post("/")
+        .set("Cookie", global.signin(user_id))
+        .send(query)
+    : await request(global.url).post("/").send(query);
   return res.body;
 };
 
@@ -390,7 +394,28 @@ it("get meals by prep time", async () => {
   expect(res.data.filterMeals).toHaveLength(0);
 });
 
-it.todo("get meals by following");
+it("get meals by following", async () => {
+  const user1 = await addUser("test1@test.com");
+  const user2 = await addUser("test2@test.com");
+  const user3 = await addUser("test3@test.com");
+
+  await createMeal({ user_id: user1.user_id, tags: ["user1"] });
+  await createMeal({ user_id: user2.user_id, tags: ["user2"] });
+  await createMeal({ user_id: user3.user_id, tags: ["user3"] });
+
+  await Follow.insert({ user_id: user2.user_id, follower_id: user1.user_id });
+  await Follow.insert({ user_id: user3.user_id, follower_id: user1.user_id });
+  await Follow.insert({ user_id: user3.user_id, follower_id: user2.user_id });
+
+  let res = await filterMeals({following: true}, user1.user_id)
+  expect(res.data.filterMeals).toHaveLength(2);
+
+  res = await filterMeals({following: true}, user2.user_id)
+  expect(res.data.filterMeals).toHaveLength(1);
+
+  res = await filterMeals({following: true}, user3.user_id)
+  expect(res.data.filterMeals).toHaveLength(0);
+});
 
 it("delete meal without signup or with wrong user", async () => {
   const { user_id } = await addUser();
@@ -431,22 +456,76 @@ it("update meal without signup or with wrong user", async () => {
   const meal = (await Meal.find())[0];
 
   let res = await updateMeal({ meal_id: meal.meal_id, addTags: ["hi"] });
-  expect(res.errors).toBeDefined()
+  expect(res.errors).toBeDefined();
   res = await updateMeal(
-    { meal_id: meal.meal_id, addTags: ["hi"] },
+    { meal_id: meal.meal_id, addTags: ["ihi"] },
     "adsfadsf"
   );
-  expect(res.errors).toBeDefined()
+  expect(res.data.updateMeal).toBeFalsy();
 });
 
 it("update non existing meal", async () => {
   const { user_id } = await addUser();
   const res = await updateMeal({ meal_id: "adfadf", prep_time: 50 }, user_id);
-  expect(res.errors).toBeDefined()
+  expect(res.errors).toBeDefined();
 });
 
-it.todo("update meal ingredients");
+it("update meal ingredients", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id });
+  const { meal_id } = (await Meal.find())[0];
 
-it.todo("update meal tags");
+  const res = await updateMeal(
+    { meal_id, ingredients: [{ ingredient: "honey", factor: 10 }] },
+    user_id
+  );
+  expect(res.data.updateMeal).toBeTruthy();
 
-it.todo("update meal scalar data");
+  const mealIngredients = await MealIngredients.find();
+  expect(mealIngredients).toHaveLength(1);
+  expect(mealIngredients[0].factor).toEqual(10);
+  expect(mealIngredients[0].name).toEqual("honey");
+});
+
+it("update meal tags", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id, tags: ["tag1", "tag5"] });
+  const { meal_id } = (await Meal.find())[0];
+
+  const res = await updateMeal(
+    { meal_id, addTags: ["tag2", "tag3"], removeTags: ["tag1"] },
+    user_id
+  );
+  expect(res.data.updateMeal).toBeTruthy();
+
+  const tags = await MealTags.find();
+  expect(tags).toHaveLength(3);
+  expect(tags.map((v) => v.tag).sort()).toEqual(["tag2", "tag3", "tag5"]);
+});
+
+it("update meal scalar data", async () => {
+  const { user_id } = await addUser();
+  await createMeal({ user_id, tags: ["tag1", "tag5"] });
+  const { meal_id } = (await Meal.find())[0];
+
+  const res = await updateMeal(
+    {
+      meal_id,
+      name: "new meal",
+      type: "launch",
+      photo: "http://bs.com",
+      steps: "3steps",
+      prep_time: 123,
+    },
+    user_id
+  );
+  expect(res.data.updateMeal).toBeTruthy();
+
+  const meal = await Meal.findOne(meal_id);
+  expect(meal).toBeDefined();
+  expect(meal?.name).toEqual("new meal");
+  expect(meal?.type).toEqual("launch");
+  expect(meal?.photo).toEqual("http://bs.com");
+  expect(meal?.steps).toEqual("3steps");
+  expect(meal?.prep_time).toEqual(123);
+});
