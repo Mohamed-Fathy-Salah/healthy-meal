@@ -8,5 +8,5 @@ import { createConnection, getConnectionOptions } from "typeorm";
   );
   await createConnection({ ...options, name: "default" });
 
-  await createApolloServer(process.env.PORT || 4000);
+  await createApolloServer(process.env.PORT || 5000);
 })();
