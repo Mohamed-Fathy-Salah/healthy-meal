@@ -11,22 +11,26 @@ import {
 import Context from "../context";
 import Ingredient from "../entity/ingredient";
 import User from "../entity/user";
-import Follow from "../entity/follow";
 import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
-import { getConnection } from "typeorm";
+import { getConnection, QueryRunner } from "typeorm";
 import MealIngredients from "../entity/meal-ingredients";
 import { UpdateMealData } from "./types/meal/update-meal-data";
 import IngredientFactor from "./types/meal/ingredient-factor";
+import Follow from "../entity/follow";
 
-//todo: get number of likes
+//todo: pagination
 @Resolver()
 export default class MealResolver {
   @Query(() => [Meal])
   async getUserMeals(@Arg("email", () => String) email: string) {
-    //todo: select meals not working for some reasone
-    return (await User.findOne({ email }, { relations: ["meals"] }))?.meals;
+    return (
+      await User.findOne(
+        { email },
+        { relations: ["meals"], select: ["user_id"] }
+      )
+    )?.meals;
   }
 
   @Query(() => [User])
@@ -133,13 +137,15 @@ export default class MealResolver {
         .where("meal.prep_time >= :start", { start: filter.prep_time.start })
         .andWhere("meal.prep_time <= :end", { end: filter.prep_time.end });
 
-    const res = await query.getMany();
-
-    return res;
+    return await query.getMany();
   }
 
-  async calculateNutrition(mealIngredients: IngredientFactor[]) {
-    const ingredients = await Ingredient.findByIds(
+  async calculateNutrition(
+    mealIngredients: IngredientFactor[],
+    queryRunner: QueryRunner
+  ) {
+    const ingredients = await queryRunner.manager.findByIds(
+      Ingredient,
       mealIngredients.map((v) => v.ingredient),
       {
         select: ["name", "fat", "carb", "protein", "calories"],
@@ -173,45 +179,62 @@ export default class MealResolver {
     @Arg("meal", () => CreateMealData) meal: CreateMealData,
     @Ctx() { user_id }: Context
   ) {
-    const { calories, protein, carb, fat } = await this.calculateNutrition(
-      meal.ingredients
-    );
+    const queryRunner = getConnection().createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction("READ UNCOMMITTED");
 
-    //todo: user transaction
-    let { identifiers } = await Meal.insert({
-      name: meal.name,
-      description: meal.description,
-      type: meal.type,
-      photo: meal.photo,
-      prep_time: meal.prep_time,
-      steps: meal.steps,
-      user_id,
-      fat,
-      carb,
-      protein,
-      calories,
-    });
+    try {
+      const { calories, protein, carb, fat } = await this.calculateNutrition(
+        meal.ingredients,
+        queryRunner
+      );
 
-    if (identifiers.length === 0) return false;
+      let { identifiers } = await queryRunner.manager.insert(Meal, {
+        name: meal.name,
+        description: meal.description,
+        type: meal.type,
+        photo: meal.photo,
+        prep_time: meal.prep_time,
+        steps: meal.steps,
+        user_id,
+        fat,
+        carb,
+        protein,
+        calories,
+      });
 
-    ({ identifiers } = await MealIngredients.insert(
-      meal.ingredients.map((v) => ({
-        name: v.ingredient,
-        factor: v.factor,
-        meal_id: identifiers[0].meal_id,
-      }))
-    ));
+      if (identifiers.length === 0) throw new Error("meal is not inserted");
 
-    if (identifiers.length !== meal.ingredients.length) return false;
-
-    if (meal.tags) {
-      ({ identifiers } = await MealTags.insert(
-        meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
+      ({ identifiers } = await queryRunner.manager.insert(
+        MealIngredients,
+        meal.ingredients.map((v) => ({
+          name: v.ingredient,
+          factor: v.factor,
+          meal_id: identifiers[0].meal_id,
+        }))
       ));
-      return identifiers.length !== meal.tags.length;
-    }
 
-    return true;
+      if (identifiers.length !== meal.ingredients.length)
+        throw new Error("ingredients are not inserted");
+
+      if (meal.tags) {
+        ({ identifiers } = await queryRunner.manager.insert(
+          MealTags,
+          meal.tags.map((v) => ({ meal_id: identifiers[0].meal_id, tag: v }))
+        ));
+
+        if (identifiers.length !== meal.tags.length)
+          throw new Error("tags are not inserted");
+      }
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      return true;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+    }
+    return false;
   }
 
   @Mutation(() => Boolean)
@@ -230,56 +253,74 @@ export default class MealResolver {
     @Arg("meal", () => UpdateMealData) meal: UpdateMealData,
     @Ctx() { user_id }: Context
   ) {
-    //todo: transaction
-    const userMeal = await Meal.findOne(meal.meal_id, {
-      select: ["meal_id", "user_id"],
-    });
-    if (!userMeal || userMeal.user_id !== user_id) return false;
-    let updateValues = { ...meal };
+    const queryRunner = getConnection().createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction("READ UNCOMMITTED");
+    try {
+      const userMeal = await queryRunner.manager.findOne(Meal, meal.meal_id, {
+        select: ["meal_id", "user_id"],
+      });
 
-    if (meal.ingredients) {
-      const [_, nutrition] = await Promise.all([
-        MealIngredients.delete({ meal_id: meal.meal_id }),
-        this.calculateNutrition(meal.ingredients),
-      ]);
-      await MealIngredients.insert(
-        meal.ingredients.map((v) => ({
-          name: v.ingredient,
-          factor: v.factor,
-          meal_id: meal.meal_id,
-        }))
-      ),
-        (updateValues = { ...meal, ...nutrition });
+      if (!userMeal || userMeal.user_id !== user_id)
+        throw new Error("not found");
+      let updateValues = { ...meal };
+
+      if (meal.ingredients) {
+        const [_, nutrition] = await Promise.all([
+          queryRunner.manager.delete(MealIngredients, {
+            meal_id: meal.meal_id,
+          }),
+          this.calculateNutrition(meal.ingredients, queryRunner),
+        ]);
+
+        await queryRunner.manager.insert(
+          MealIngredients,
+          meal.ingredients.map((v) => ({
+            name: v.ingredient,
+            factor: v.factor,
+            meal_id: meal.meal_id,
+          }))
+        ),
+          (updateValues = { ...meal, ...nutrition });
+      }
+
+      delete updateValues.ingredients;
+      delete updateValues.addTags;
+      delete updateValues.removeTags;
+
+      if (
+        meal.ingredients ||
+        meal.prep_time ||
+        meal.name ||
+        meal.type ||
+        meal.photo ||
+        meal.steps ||
+        meal.description
+      )
+        await queryRunner.manager.update(Meal, meal.meal_id, updateValues);
+
+      if (meal.removeTags)
+        await queryRunner.manager
+          .createQueryBuilder()
+          .delete()
+          .from(MealTags)
+          .where("meal_tags.meal_id = :meal_id", { meal_id: meal.meal_id })
+          .andWhere("meal_tags.tag IN (:...tags)", { tags: meal.removeTags })
+          .execute();
+
+      if (meal.addTags)
+        await queryRunner.manager.insert(
+          MealTags,
+          meal.addTags.map((v) => ({ meal_id: meal.meal_id, tag: v }))
+        );
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      return true;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
     }
-
-    delete updateValues.ingredients;
-    delete updateValues.addTags;
-    delete updateValues.removeTags;
-
-    if (
-      meal.ingredients ||
-      meal.prep_time ||
-      meal.name ||
-      meal.type ||
-      meal.photo ||
-      meal.steps ||
-      meal.description
-    )
-      await Meal.update(meal.meal_id, updateValues);
-
-    if (meal.removeTags)
-      await getConnection()
-        .createQueryBuilder()
-        .delete()
-        .from(MealTags)
-        .where("meal_tags.meal_id = :meal_id", { meal_id: meal.meal_id })
-        .andWhere("meal_tags.tag IN (:...tags)", { tags: meal.removeTags })
-        .execute();
-
-    if (meal.addTags)
-      await MealTags.insert(
-        meal.addTags.map((v) => ({ meal_id: meal.meal_id, tag: v }))
-      );
-    return true;
+    return false;
   }
 }

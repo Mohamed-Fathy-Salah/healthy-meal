@@ -159,16 +159,14 @@ const updateMeal = async (meal: UpdateMealData, user_id?: string) => {
 
 it("make meal without signup", async () => {
   const res = await createMeal({});
-  expect(res.errors).toBeDefined();
+  expect(res.data.createMeal).toBeFalsy();
   const meal = await Meal.find();
   expect(meal).toHaveLength(0);
 });
 
 it("make meal with user doesnot exist", async () => {
   const res = await createMeal({ user_id: "adfadfdasf" });
-
-  expect(res.errors).toBeDefined();
-
+  expect(res.data.createMeal).toBeFalsy();
   const meal = await Meal.find();
   expect(meal).toHaveLength(0);
 });
@@ -267,7 +265,8 @@ it("get meals by tags", async () => {
 it("get meals by type", async () => {
   for (let i = 0; i < 3; i++) {
     const { user_id } = await addUser(`test${i}@test.com`);
-    for (let j = 0; j < 3; j++) await createMeal({ user_id, type: Object.values(MealType)[i] });
+    for (let j = 0; j < 3; j++)
+      await createMeal({ user_id, type: Object.values(MealType)[i] });
   }
 
   const { user_id } = await addUser("test10@test.com");
@@ -406,13 +405,13 @@ it("get meals by following", async () => {
   await Follow.insert({ user_id: user3.user_id, follower_id: user1.user_id });
   await Follow.insert({ user_id: user3.user_id, follower_id: user2.user_id });
 
-  let res = await filterMeals({following: true}, user1.user_id)
+  let res = await filterMeals({ following: true }, user1.user_id);
   expect(res.data.filterMeals).toHaveLength(2);
 
-  res = await filterMeals({following: true}, user2.user_id)
+  res = await filterMeals({ following: true }, user2.user_id);
   expect(res.data.filterMeals).toHaveLength(1);
 
-  res = await filterMeals({following: true}, user3.user_id)
+  res = await filterMeals({ following: true }, user3.user_id);
   expect(res.data.filterMeals).toHaveLength(0);
 });
 

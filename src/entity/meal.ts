@@ -7,7 +7,7 @@ import {
   JoinColumn,
   OneToMany,
 } from "typeorm";
-import { Field, ObjectType } from "type-graphql";
+import { Field, Int, ObjectType } from "type-graphql";
 import User from "./user";
 import MealIngredients from "./meal-ingredients";
 import MealTags from "./meal-tags";
@@ -80,6 +80,10 @@ export default class Meal extends BaseEntity {
   @Field(() => [MealTags])
   @OneToMany(() => MealTags, (mealTags) => mealTags.meal, { eager: true })
   tags: MealTags[];
+
+  @Field(() => Int)
+  @Column("int", { default: 0 })
+  likesCount: number;
 
   @Field(() => [Like])
   @OneToMany(() => Like, (like) => like.meal)

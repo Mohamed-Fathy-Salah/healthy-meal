@@ -10,6 +10,8 @@ import Context from "../context";
 import { currentUser } from "../middlewares/current-user";
 import Like from "../entity/like";
 import User from "../entity/user";
+import { getConnection } from "typeorm";
+import Meal from "../entity/meal";
 
 @Resolver()
 export default class LikeResolver {
@@ -29,8 +31,32 @@ export default class LikeResolver {
     @Ctx() { user_id }: Context,
     @Arg("meal_id", () => String) meal_id: string
   ) {
-    const { identifiers } = await Like.insert({ meal_id, user_id });
-    return identifiers.length === 1;
+    const queryRunner = getConnection().createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction("READ UNCOMMITTED");
+    try {
+      const { identifiers } = await queryRunner.manager.insert(Like, {
+        meal_id,
+        user_id,
+      });
+      if (identifiers.length !== 1) throw new Error("like not added");
+
+      const { affected } = await queryRunner.manager.increment(
+        Meal,
+        { meal_id },
+        "likesCount",
+        1
+      );
+      if (affected !== 1) throw new Error("like not incremented");
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      return true;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+    }
+    return false;
   }
 
   @Mutation(() => Boolean)
@@ -39,7 +65,31 @@ export default class LikeResolver {
     @Ctx() { user_id }: Context,
     @Arg("meal_id", () => String) meal_id: string
   ) {
-    const { affected } = await Like.delete({ meal_id, user_id });
-    return affected === 1;
+    const queryRunner = getConnection().createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction("READ UNCOMMITTED");
+    try {
+      let { affected } = await queryRunner.manager.delete(Like, {
+        meal_id,
+        user_id,
+      });
+      if (affected !== 1) throw new Error("like not deleted");
+
+      ({ affected } = await queryRunner.manager.decrement(
+        Meal,
+        { meal_id },
+        "likesCount",
+        1
+      ));
+      if (affected !== 1) throw new Error("like not decremented");
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      return true;
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+    }
+    return false;
   }
 }
