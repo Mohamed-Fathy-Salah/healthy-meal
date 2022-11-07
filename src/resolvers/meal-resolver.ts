@@ -11,7 +11,7 @@ import {
 import Context from "../context";
 import Ingredient from "../entity/ingredient";
 import User from "../entity/user";
-import Follow from "../entity/follow";
+//import Follow from "../entity/follow";
 import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
@@ -19,14 +19,19 @@ import { getConnection } from "typeorm";
 import MealIngredients from "../entity/meal-ingredients";
 import { UpdateMealData } from "./types/meal/update-meal-data";
 import IngredientFactor from "./types/meal/ingredient-factor";
+import Follow from "../entity/follow";
 
 //todo: get number of likes
 @Resolver()
 export default class MealResolver {
   @Query(() => [Meal])
   async getUserMeals(@Arg("email", () => String) email: string) {
-    //todo: select meals not working for some reasone
-    return (await User.findOne({ email }, { relations: ["meals"] }))?.meals;
+    return (
+      await User.findOne(
+        { email },
+        { relations: ["meals"], select: ["user_id"] }
+      )
+    )?.meals;
   }
 
   @Query(() => [User])
