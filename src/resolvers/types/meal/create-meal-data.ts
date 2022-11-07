@@ -1,6 +1,7 @@
-import { IsIn, IsNotEmpty, IsNumber, IsUrl } from "class-validator";
+import { IsNotEmpty, IsNumber, IsUrl } from "class-validator";
 import { Field, InputType } from "type-graphql";
 import IngredientFactor from "./ingredient-factor";
+import { MealType } from "./meal-type";
 
 @InputType()
 export default class CreateMealData {
@@ -12,9 +13,8 @@ export default class CreateMealData {
   @IsNotEmpty()
   description: string;
 
-  @Field()
-  @IsIn(["breakfast", "launch", "dinner", "snack"])
-  type: string;
+  @Field(() => MealType)
+  type: MealType;
 
   @Field()
   @IsUrl()

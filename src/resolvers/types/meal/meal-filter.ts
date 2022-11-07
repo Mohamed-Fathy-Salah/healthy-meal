@@ -1,13 +1,12 @@
-import { IsEmail, IsIn, IsString } from "class-validator";
+import { IsEmail, IsString } from "class-validator";
 import { Field, InputType } from "type-graphql";
 import FilterRange from "../filter-range";
+import { MealType } from "./meal-type";
 
 @InputType()
 export default class MealFilter {
-  @Field(() => String, { nullable: true })
-  //todo: make enum
-  @IsIn(["breakfast", "launch", "dinner", "snack"])
-  type?: string;
+  @Field(() => MealType, { nullable: true })
+  type?: MealType;
 
   @Field(() => [String], { nullable: true })
   @IsString({ each: true })
