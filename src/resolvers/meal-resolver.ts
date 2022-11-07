@@ -20,7 +20,6 @@ import { UpdateMealData } from "./types/meal/update-meal-data";
 import IngredientFactor from "./types/meal/ingredient-factor";
 import Follow from "../entity/follow";
 
-//todo: get number of likes
 //todo: pagination
 @Resolver()
 export default class MealResolver {
