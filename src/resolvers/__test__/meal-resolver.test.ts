@@ -11,6 +11,7 @@ import Bookmark from "../../entity/bookmark";
 import Like from "../../entity/like";
 import { UpdateMealData } from "../types/meal/update-meal-data";
 import MealTags from "../../entity/meal-tags";
+import { MealType } from "../types/meal/meal-type";
 
 beforeAll(async () => {
   const unit1 = Unit.create({ label: "peice" });
@@ -37,8 +38,6 @@ beforeAll(async () => {
     unit: unit2,
   });
 });
-
-const types = ["snack", "breakfast", "dinner"];
 
 const addUser = async (email?: string) => {
   const user = User.create({
@@ -268,13 +267,13 @@ it("get meals by tags", async () => {
 it("get meals by type", async () => {
   for (let i = 0; i < 3; i++) {
     const { user_id } = await addUser(`test${i}@test.com`);
-    for (let j = 0; j < 3; j++) await createMeal({ user_id, type: types[i] });
+    for (let j = 0; j < 3; j++) await createMeal({ user_id, type: Object.values(MealType)[i] });
   }
 
   const { user_id } = await addUser("test10@test.com");
 
   for (let i = 0; i < 3; i++) {
-    const res = await filterMeals({ type: types[i] }, user_id);
+    const res = await filterMeals({ types: [MealType.breakfast] }, user_id);
     expect(res.data.filterMeals).toHaveLength(3);
   }
 });
@@ -512,7 +511,7 @@ it("update meal scalar data", async () => {
     {
       meal_id,
       name: "new meal",
-      type: "launch",
+      type: MealType.breakfast,
       photo: "http://bs.com",
       steps: "3steps",
       prep_time: 123,
@@ -524,7 +523,7 @@ it("update meal scalar data", async () => {
   const meal = await Meal.findOne(meal_id);
   expect(meal).toBeDefined();
   expect(meal?.name).toEqual("new meal");
-  expect(meal?.type).toEqual("launch");
+  expect(meal?.type).toEqual(MealType.breakfast);
   expect(meal?.photo).toEqual("http://bs.com");
   expect(meal?.steps).toEqual("3steps");
   expect(meal?.prep_time).toEqual(123);

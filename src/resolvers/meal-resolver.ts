@@ -105,8 +105,8 @@ export default class MealResolver {
         )
       : query.leftJoin("meal.mealIngredients", "mealingredients");
 
-    if (filter.type)
-      query = query.where("meal.type = :type", { type: filter.type });
+    if (filter.types)
+      query = query.where("meal.type IN (:...types)", { types: filter.types });
 
     if (filter.calories)
       query = query

@@ -1,7 +1,8 @@
-import { IsIn, IsNotEmpty, IsNumber, IsUrl, IsUUID } from "class-validator";
+import { IsNotEmpty, IsNumber, IsUrl, IsUUID } from "class-validator";
 import Meal from "../../../entity/meal";
 import { Field, InputType, Int } from "type-graphql";
 import IngredientFactor from "./ingredient-factor";
+import { MealType } from "./meal-type";
 
 @InputType()
 export class UpdateMealData implements Partial<Meal> {
@@ -17,9 +18,8 @@ export class UpdateMealData implements Partial<Meal> {
   @IsNotEmpty()
   description?: string;
 
-  @Field({ nullable: true })
-  @IsIn(["breakfast", "launch", "dinner", "snack"])
-  type?: string;
+  @Field(() => MealType, { nullable: true })
+  type?: MealType;
 
   @Field({ nullable: true })
   @IsUrl()
