@@ -5,8 +5,8 @@ import { MealType } from "./meal-type";
 
 @InputType()
 export default class MealFilter {
-  @Field(() => MealType, { nullable: true })
-  type?: MealType;
+  @Field(() => [MealType], { nullable: true })
+  types?: MealType[];
 
   @Field(() => [String], { nullable: true })
   @IsString({ each: true })

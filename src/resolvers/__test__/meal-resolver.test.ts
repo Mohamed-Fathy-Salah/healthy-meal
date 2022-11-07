@@ -273,7 +273,7 @@ it("get meals by type", async () => {
   const { user_id } = await addUser("test10@test.com");
 
   for (let i = 0; i < 3; i++) {
-    const res = await filterMeals({ type: MealType.breakfast }, user_id);
+    const res = await filterMeals({ types: [MealType.breakfast] }, user_id);
     expect(res.data.filterMeals).toHaveLength(3);
   }
 });
