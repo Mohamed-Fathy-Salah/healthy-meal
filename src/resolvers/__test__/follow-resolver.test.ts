@@ -1,6 +1,5 @@
 import User from "../../entity/user";
 import request from "supertest";
-import Follow from "../../entity/follow";
 
 const userData = {
   name: "name",
@@ -30,6 +29,19 @@ const mutation = {
   },
 };
 
+const checkFollowCount = async (
+  user_id: string,
+  followersCount: number,
+  followingCount: number
+) => {
+  const user = await User.findOne(user_id, {
+    select: ["followingCount", "followersCount"],
+  });
+
+  expect(user?.followingCount).toEqual(followingCount);
+  expect(user?.followersCount).toEqual(followersCount);
+};
+
 it("follow with out login", async () => {
   await User.insert({ ...userData });
 
@@ -56,18 +68,24 @@ it("follow non existing user or self follow", async () => {
     .send(mutation.follow(userData.email));
 
   expect(res.body.data.follow).toBeFalsy();
+
+  await checkFollowCount(userId, 0, 0);
 });
 
 it("follow new user", async () => {
   const user1 = (await User.insert({ ...userData })).identifiers[0].user_id;
-  await User.insert({ ...userData, email: "test1@test.com" });
+  const user2 = (await User.insert({ ...userData, email: "tes1@test.com" }))
+    .identifiers[0].user_id;
 
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user1))
-    .send(mutation.follow("test1@test.com"));
+    .send(mutation.follow("tes1@test.com"));
 
   expect(res.body.data.follow).toBeTruthy();
+
+  await checkFollowCount(user1, 0, 1);
+  await checkFollowCount(user2, 1, 0);
 });
 
 it("get number of following users and followers", async () => {
@@ -96,6 +114,8 @@ it("get number of following users and followers", async () => {
     expect(following).toHaveLength(i);
     for (let j = 0; j < following.length; j++)
       expect(following[j].email).toBe(`test${j}@test.com`);
+
+    await checkFollowCount(arr[i], 0, i);
   }
 
   for (let i = 0; i < N; i++) {
@@ -108,8 +128,10 @@ it("get number of following users and followers", async () => {
     const followers = res.body.data.getFollowers;
     expect(followers).toHaveLength(N - i - 1);
 
-    const emails = followers.map((v:{email: string}) => v.email);
+    const emails = followers.map((v: { email: string }) => v.email);
     expect(new Set(emails).size).toEqual(N - i - 1);
+
+    await checkFollowCount(arr[i], N - i - 1, i);
   }
 });
 
@@ -126,12 +148,21 @@ it("unfollow success", async () => {
   const user2 = (await User.insert({ ...userData, email: "test2@test.com" }))
     .identifiers[0].user_id;
 
-  await Follow.insert({ user_id: user1, follower_id: user2 });
+  await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user1))
+    .send(mutation.follow("test2@test.com"));
+
+  await checkFollowCount(user1, 0, 1);
+  await checkFollowCount(user2, 1, 0);
 
   const res = await request(global.url)
     .post("/")
-    .set("Cookie", global.signin(user2))
-    .send(mutation.unfollow(userData.email));
+    .set("Cookie", global.signin(user1))
+    .send(mutation.unfollow("test2@test.com"));
 
   expect(res.body.data.unfollow).toBeTruthy();
+
+  await checkFollowCount(user1, 0, 0);
+  await checkFollowCount(user2, 0, 0);
 });
