@@ -5,7 +5,7 @@ import {
   BaseEntity,
   OneToMany,
 } from "typeorm";
-import { Field, ObjectType } from "type-graphql";
+import { Field, Int, ObjectType } from "type-graphql";
 import Follow from "./follow";
 import Meal from "./meal";
 import Like from "./like";
@@ -55,9 +55,17 @@ export default class User extends BaseEntity {
   @OneToMany(() => Follow, (follow) => follow.follower)
   following: Follow[];
 
+  @Field(() => Int)
+  @Column("int", { default: 0 })
+  followingCount: number;
+
   @Field(() => [Follow])
   @OneToMany(() => Follow, (follow) => follow.user)
   followers: Follow[];
+
+  @Field(() => Int)
+  @Column("int", { default: 0 })
+  followersCount: number;
 
   @Field(() => [Meal])
   @OneToMany(() => Meal, (meal) => meal.user)
