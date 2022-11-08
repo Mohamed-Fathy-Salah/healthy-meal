@@ -13,12 +13,14 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth2";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import jwt from "jsonwebtoken";
 import User from "./entity/user";
+import cors from 'cors';
 
 export const createApolloServer = async (port: number | string) => {
   const app = express();
 
   app.set("trust proxy", 1);
 
+  app.use(cors());
   app.use(cookieSession({ signed: false }));
   app.use(passport.initialize());
   app.use(passport.session());
@@ -38,7 +40,7 @@ export const createApolloServer = async (port: number | string) => {
     context: ({ req, res }) => ({ req, res }),
   });
 
-  apolloServer.applyMiddleware({ app, cors: false });
+  apolloServer.applyMiddleware({ app });
 
   passport.serializeUser((user, done) => {
     done(null, user);
