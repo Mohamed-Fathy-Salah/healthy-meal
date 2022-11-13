@@ -36,16 +36,16 @@ export default class MealResolver {
   @Query(() => [User])
   @UseMiddleware(currentUser)
   async getFollowingMeals(@Ctx() { user_id }: Context) {
-    //todo: one query
-    const following = await Follow.find({
-      where: { follower_id: user_id },
-      select: ["user_id"],
-    });
-    const followingMeals = await User.findByIds(
-      following.map((v) => v.user_id),
-      { relations: ["meals"] }
-    );
-    return followingMeals;
+    const followingMeals = await getConnection()
+      .createQueryBuilder()
+      .select("follow.user_id")
+      .from(Follow, "follow")
+      .innerJoinAndSelect("follow.user", "user")
+      .leftJoinAndSelect("user.meals", "meal")
+      .where("follower_id = :user_id", { user_id })
+      .getMany();
+
+    return followingMeals.map((v) => v.user);
   }
 
   @Query(() => [Meal])
