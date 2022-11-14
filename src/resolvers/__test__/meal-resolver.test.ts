@@ -93,11 +93,17 @@ const createMeal = async ({
   return res.body;
 };
 
-const getUserMeals = async (email: string) => {
+const getUserMeals = async ({
+  email,
+  page,
+}: {
+  email?: string;
+  page?: number;
+}) => {
   const res = await request(global.url).post("/").send({
     query:
-      "query getUserMeals($email: String!){getUserMeals(email: $email){meal_id, name, type}}",
-    variables: { email },
+      "query getUserMeals($email: String!, $page: Int){getUserMeals(email: $email, page: $page){meal_id, name, type}}",
+    variables: { email, page },
   });
   return res.body;
 };
@@ -211,15 +217,15 @@ it("get meals of user", async () => {
 
   await createMeal({ user_id: user.user_id });
 
-  const res = await getUserMeals(user.email);
+  const res = await getUserMeals({ email: user.email });
 
   expect(res.data.getUserMeals).toHaveLength(1);
 });
 
 it("get meals of user that doesnot exist", async () => {
-  const res = await getUserMeals("email@email.com");
+  const res = await getUserMeals({ email: "email@email.com" });
 
-  expect(res.errors).toBeDefined();
+  expect(res.data.getUserMeals).toHaveLength(0);
 });
 
 it("get meals of following users", async () => {
@@ -526,4 +532,21 @@ it("update meal scalar data", async () => {
   expect(meal?.photo).toEqual("http://bs.com");
   expect(meal?.steps).toEqual("3steps");
   expect(meal?.prep_time).toEqual(123);
+});
+
+it("pagination get user meals using time", async () => {
+  const N = 15;
+  const email = "email@email.com";
+  const user = await addUser(email);
+  for (let i = 0; i < N; i++)
+    await createMeal({ user_id: user.user_id, prep_time: 60 * i + 10 });
+
+  let meals = await getUserMeals({ email });
+  expect(meals.data.getUserMeals).toHaveLength(10);
+
+  meals = await getUserMeals({ email, page: 1 });
+  expect(meals.data.getUserMeals).toHaveLength(N - 10);
+
+  meals = await getUserMeals({ email, page: 2 });
+  expect(meals.data.getUserMeals).toHaveLength(0);
 });

@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  CreateDateColumn,
 } from "typeorm";
 import { Field, Int, ObjectType } from "type-graphql";
 import User from "./user";
@@ -92,4 +93,8 @@ export default class Meal extends BaseEntity {
   @Field(() => [Bookmark])
   @OneToMany(() => Bookmark, (bookmark) => bookmark.meal)
   bookmarks: Bookmark[];
+
+  @Field(() => Date)
+  @CreateDateColumn()
+  createdDate: Date;
 }

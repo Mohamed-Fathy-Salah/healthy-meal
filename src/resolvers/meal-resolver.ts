@@ -3,6 +3,7 @@ import { currentUser } from "../middlewares/current-user";
 import {
   Arg,
   Ctx,
+  Int,
   Mutation,
   Query,
   Resolver,
@@ -20,17 +21,29 @@ import { UpdateMealData } from "./types/meal/update-meal-data";
 import IngredientFactor from "./types/meal/ingredient-factor";
 import Follow from "../entity/follow";
 
+const PAGE_SIZE = 10;
 //todo: pagination
 @Resolver()
 export default class MealResolver {
   @Query(() => [Meal])
-  async getUserMeals(@Arg("email", () => String) email: string) {
-    return (
-      await User.findOne(
-        { email },
-        { relations: ["meals"], select: ["user_id"] }
-      )
-    )?.meals;
+  async getUserMeals(
+    @Arg("email", () => String) email: string,
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number
+  ) {
+    if (!page) page = 0;
+    const user = await getConnection()
+      .createQueryBuilder()
+      .select("user.user_id")
+      .from(User, "user")
+      .leftJoinAndSelect("user.meals", "meal")
+      .where("user.email = :email", { email })
+      .orderBy("meal.createdDate", "DESC")
+      .offset(PAGE_SIZE * page)
+      .limit(PAGE_SIZE)
+      .getOne();
+
+    if (!user) return [];
+    return user.meals;
   }
 
   @Query(() => [User])
