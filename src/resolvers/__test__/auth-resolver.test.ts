@@ -78,11 +78,11 @@ it("wrong signin credentials", async () => {
   const query = mutation.signin();
   await User.insert(mutation.signup().variables.user);
 
-  query.variables.user.email = "blah@blah.com";
+  query.variables.user.email = "1blah@blah.com";
   let { body } = await request(global.url).post("/").send(query);
   expect(body.errors).toBeDefined();
 
-  query.variables.user.email = "test@test.com";
+  query.variables.user.email = "1test@test.com";
   query.variables.user.password = "adjfad;sf";
   ({ body } = await request(global.url).post("/").send(query));
   expect(body.errors).toBeDefined();

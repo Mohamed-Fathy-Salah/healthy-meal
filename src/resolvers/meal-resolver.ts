@@ -44,7 +44,7 @@ export default class MealResolver {
     if (likes) query = query.orderBy("meal.likesCount", "DESC");
     else query = query.orderBy("meal.createdDate", "DESC");
 
-    query = query.offset(PAGE_SIZE * page).limit(PAGE_SIZE);
+    query = query.skip(PAGE_SIZE * page).take(PAGE_SIZE);
 
     return await query.getMany();
   }
@@ -72,7 +72,7 @@ export default class MealResolver {
     if (likes) query = query.orderBy("meal.likesCount", "DESC");
     else query = query.orderBy("meal.createdDate", "DESC");
 
-    query = query.offset(PAGE_SIZE * page).limit(PAGE_SIZE);
+    query = query.skip(PAGE_SIZE * page).take(PAGE_SIZE);
 
     return await query.getMany();
   }
@@ -82,6 +82,12 @@ export default class MealResolver {
   @UseMiddleware(currentUser)
   async filterMeals(
     @Arg("filter", () => MealFilter) filter: MealFilter,
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number,
+    @Arg("likes", () => Boolean, {
+      defaultValue: false,
+      description: "order by likes desc",
+    })
+    likes: boolean,
     @Ctx() { user_id }: Context
   ) {
     let query = getConnection()
@@ -166,6 +172,11 @@ export default class MealResolver {
       query = query
         .where("meal.prep_time >= :start", { start: filter.prep_time.start })
         .andWhere("meal.prep_time <= :end", { end: filter.prep_time.end });
+
+    if (likes) query = query.orderBy("meal.likesCount", "DESC");
+    else query = query.orderBy("meal.createdDate", "DESC");
+
+    query = query.skip(PAGE_SIZE * page).take(PAGE_SIZE);
 
     return await query.getMany();
   }
