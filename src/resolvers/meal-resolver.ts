@@ -22,7 +22,7 @@ import IngredientFactor from "./types/meal/ingredient-factor";
 import Follow from "../entity/follow";
 
 const PAGE_SIZE = 10;
-//todo: pagination
+
 @Resolver()
 export default class MealResolver {
   @Query(() => [Meal])
@@ -31,21 +31,21 @@ export default class MealResolver {
     @Arg("page", () => Int, { defaultValue: 0 }) page: number
   ) {
     if (!page) page = 0;
-    const user = await getConnection()
+
+    const meals = await getConnection()
       .createQueryBuilder()
-      .select("user.user_id")
-      .from(User, "user")
-      .leftJoinAndSelect("user.meals", "meal")
-      .where("user.email = :email", { email })
+      .select("meal")
+      .from(Meal, "meal")
+      .innerJoin("meal.user", "user", "user.email = :email", { email })
       .orderBy("meal.createdDate", "DESC")
       .offset(PAGE_SIZE * page)
       .limit(PAGE_SIZE)
-      .getOne();
+      .getMany();
 
-    if (!user) return [];
-    return user.meals;
+    return meals;
   }
 
+  //todo: pagination
   @Query(() => [User])
   @UseMiddleware(currentUser)
   async getFollowingMeals(@Ctx() { user_id }: Context) {
@@ -61,6 +61,7 @@ export default class MealResolver {
     return followingMeals.map((v) => v.user);
   }
 
+  //todo: pagination
   @Query(() => [Meal])
   @UseMiddleware(currentUser)
   async filterMeals(

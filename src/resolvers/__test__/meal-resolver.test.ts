@@ -534,7 +534,7 @@ it("update meal scalar data", async () => {
   expect(meal?.prep_time).toEqual(123);
 });
 
-it("pagination get user meals using time", async () => {
+it("paginate getUserMeals using time", async () => {
   const N = 15;
   const email = "email@email.com";
   const user = await addUser(email);
