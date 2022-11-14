@@ -77,7 +77,6 @@ export default class MealResolver {
     return await query.getMany();
   }
 
-  //todo: pagination
   @Query(() => [Meal])
   @UseMiddleware(currentUser)
   async filterMeals(
