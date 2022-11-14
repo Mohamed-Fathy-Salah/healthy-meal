@@ -36,7 +36,7 @@ export default class MealResolver {
       .createQueryBuilder()
       .select("meal")
       .from(Meal, "meal")
-      .innerJoin("meal.user", "user", "user.email = :email", { email })
+      .leftJoin("meal.user", "user", "user.email = :email", { email })
       .orderBy("meal.createdDate", "DESC")
       .offset(PAGE_SIZE * page)
       .limit(PAGE_SIZE)
