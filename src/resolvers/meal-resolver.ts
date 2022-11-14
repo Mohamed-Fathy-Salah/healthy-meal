@@ -49,7 +49,6 @@ export default class MealResolver {
     return await query.getMany();
   }
 
-  //todo: pagination
   @Query(() => [Meal])
   @UseMiddleware(currentUser)
   async getFollowingMeals(
@@ -65,8 +64,10 @@ export default class MealResolver {
       .createQueryBuilder()
       .select("meal")
       .from(Meal, "meal")
-      .leftJoin("meal.user", "user", "user.user_id = :user_id", { user_id })
-      .leftJoin("user.following", "follow");
+      .leftJoin("meal.user", "user")
+      .innerJoin("user.followers", "follow", "follow.follower_id = :user_id", {
+        user_id,
+      });
 
     if (likes) query = query.orderBy("meal.likesCount", "DESC");
     else query = query.orderBy("meal.createdDate", "DESC");
