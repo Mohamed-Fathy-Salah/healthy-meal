@@ -259,7 +259,6 @@ it("get meals of following users", async () => {
   await createMeal({ user_id: user2.user_id, type: "snack" });
 
   const res = await getFollowingMeals(user3.user_id);
-  console.error(res);
   expect(res.data.getFollowingMeals).toHaveLength(2);
 });
 
@@ -593,6 +592,8 @@ it("paginate getUserMeals using likes", async () => {
 
   res = await getUserMeals({ email, page: 1, likes: true });
   expect(res.data.getUserMeals).toHaveLength(N - 10);
+  expect(res.data.getUserMeals[0].likesCount).toBe(N - 10)
+  expect(res.data.getUserMeals[N - 11].likesCount).toBe(1)
 
   res = await getUserMeals({ email, page: 2, likes: true });
   expect(res.data.getUserMeals).toHaveLength(0);
