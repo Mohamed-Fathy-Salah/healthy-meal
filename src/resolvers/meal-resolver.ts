@@ -11,7 +11,6 @@ import {
 } from "type-graphql";
 import Context from "../context";
 import Ingredient from "../entity/ingredient";
-import User from "../entity/user";
 import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
@@ -19,7 +18,6 @@ import { getConnection, QueryRunner } from "typeorm";
 import MealIngredients from "../entity/meal-ingredients";
 import { UpdateMealData } from "./types/meal/update-meal-data";
 import IngredientFactor from "./types/meal/ingredient-factor";
-import Follow from "../entity/follow";
 
 const PAGE_SIZE = 10;
 
@@ -28,37 +26,54 @@ export default class MealResolver {
   @Query(() => [Meal])
   async getUserMeals(
     @Arg("email", () => String) email: string,
-    @Arg("page", () => Int, { defaultValue: 0 }) page: number
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number,
+    @Arg("likes", () => Boolean, {
+      defaultValue: false,
+      description: "order by likes desc",
+    })
+    likes: boolean
   ) {
     if (!page) page = 0;
 
-    const meals = await getConnection()
+    let query = getConnection()
       .createQueryBuilder()
       .select("meal")
       .from(Meal, "meal")
-      .leftJoin("meal.user", "user", "user.email = :email", { email })
-      .orderBy("meal.createdDate", "DESC")
-      .offset(PAGE_SIZE * page)
-      .limit(PAGE_SIZE)
-      .getMany();
+      .leftJoin("meal.user", "user", "user.email = :email", { email });
 
-    return meals;
+    if (likes) query = query.orderBy("meal.likesCount", "DESC");
+    else query = query.orderBy("meal.createdDate", "DESC");
+
+    query = query.offset(PAGE_SIZE * page).limit(PAGE_SIZE);
+
+    return await query.getMany();
   }
 
   //todo: pagination
-  @Query(() => [User])
+  @Query(() => [Meal])
   @UseMiddleware(currentUser)
-  async getFollowingMeals(@Ctx() { user_id }: Context) {
-    const followingMeals = await getConnection()
+  async getFollowingMeals(
+    @Ctx() { user_id }: Context,
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number,
+    @Arg("likes", () => Boolean, {
+      defaultValue: false,
+      description: "order by likes desc",
+    })
+    likes: boolean
+  ) {
+    let query = getConnection()
       .createQueryBuilder()
-      .select("follow.user_id")
-      .from(Follow, "follow")
-      .innerJoinAndSelect("follow.user", "user")
-      .leftJoinAndSelect("user.meals", "meal")
-      .where("follower_id = :user_id", { user_id })
-      .getMany();
+      .select("meal")
+      .from(Meal, "meal")
+      .leftJoin("meal.user", "user", "user.user_id = :user_id", { user_id })
+      .leftJoin("user.following", "follow");
 
-    return followingMeals.map((v) => v.user);
+    if (likes) query = query.orderBy("meal.likesCount", "DESC");
+    else query = query.orderBy("meal.createdDate", "DESC");
+
+    query = query.offset(PAGE_SIZE * page).limit(PAGE_SIZE);
+
+    return await query.getMany();
   }
 
   //todo: pagination
