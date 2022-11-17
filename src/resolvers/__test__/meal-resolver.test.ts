@@ -50,12 +50,14 @@ const addUser = async (email?: string) => {
 };
 
 const createMeal = async ({
+  name,
   type,
   tags,
   ingredients,
   user_id,
   prep_time,
 }: {
+  name?: string;
   type?: string;
   tags?: string[];
   ingredients?: IngredientFactor[];
@@ -70,7 +72,7 @@ const createMeal = async ({
         "mutation createMeal($meal: CreateMealData!){ createMeal(meal: $meal)}",
       variables: {
         meal: {
-          name: "meal",
+          name: name || "meal",
           description: "desc",
           type: type || "breakfast",
           photo: "http://photo.com",
@@ -93,21 +95,39 @@ const createMeal = async ({
   return res.body;
 };
 
-const getUserMeals = async (email: string) => {
+const getUserMeals = async ({
+  email,
+  page,
+  likes,
+}: {
+  email?: string;
+  page?: number;
+  likes?: boolean;
+}) => {
   const res = await request(global.url).post("/").send({
     query:
-      "query getUserMeals($email: String!){getUserMeals(email: $email){meal_id, name, type}}",
-    variables: { email },
+      "query getUserMeals($email: String!, $page: Int, $likes: Boolean){getUserMeals(email: $email, page: $page, likes: $likes){meal_id, name, type, likesCount}}",
+    variables: { email, page, likes },
   });
   return res.body;
 };
 
-const getFollowingMeals = async (user_id?: string) => {
+const getFollowingMeals = async ({
+  user_id,
+  page,
+  likes,
+}: {
+  user_id: string;
+  page?: number;
+  likes?: boolean;
+}) => {
   const res = await request(global.url)
     .post("/")
     .set("Cookie", global.signin(user_id))
     .send({
-      query: "query {getFollowingMeals{name, email, meals{name, type}}}",
+      query:
+        "query ($page: Int, $likes: Boolean){getFollowingMeals(page: $page, likes: $likes){name, type, createdDate, likesCount}}",
+      variables: { page, likes },
     });
   return res.body;
 };
@@ -154,6 +174,40 @@ const updateMeal = async (meal: UpdateMealData, user_id?: string) => {
         .set("Cookie", global.signin(user_id))
         .send(query)
     : await request(global.url).post("/").send(query);
+  return res.body;
+};
+
+const addLike = async ({
+  meal_id,
+  user_id,
+}: {
+  meal_id?: string;
+  user_id?: string;
+}) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
+      query: `mutation addLike($meal_id: String!){addLike(meal_id: $meal_id)}`,
+      variables: { meal_id },
+    });
+  return res.body;
+};
+
+const follow = async ({
+  user_id,
+  email,
+}: {
+  user_id: string;
+  email: string;
+}) => {
+  const res = await request(global.url)
+    .post("/")
+    .set("Cookie", global.signin(user_id))
+    .send({
+      query: "mutation follow($email: String!){follow(email: $email)}",
+      variables: { email },
+    });
   return res.body;
 };
 
@@ -211,15 +265,15 @@ it("get meals of user", async () => {
 
   await createMeal({ user_id: user.user_id });
 
-  const res = await getUserMeals(user.email);
+  const res = await getUserMeals({ email: user.email });
 
   expect(res.data.getUserMeals).toHaveLength(1);
 });
 
 it("get meals of user that doesnot exist", async () => {
-  const res = await getUserMeals("email@email.com");
+  const res = await getUserMeals({ email: "email@email.com" });
 
-  expect(res.errors).toBeDefined();
+  expect(res.data.getUserMeals).toHaveLength(0);
 });
 
 it("get meals of following users", async () => {
@@ -227,14 +281,13 @@ it("get meals of following users", async () => {
   const user2 = await addUser("test2@test.com");
   const user3 = await addUser("test3@test.com");
 
-  await Follow.insert({ user_id: user1.user_id, follower_id: user3.user_id });
-  await Follow.insert({ user_id: user2.user_id, follower_id: user3.user_id });
+  await follow({ user_id: user3.user_id, email: user1.email });
+  await follow({ user_id: user3.user_id, email: user2.email });
 
   await createMeal({ user_id: user1.user_id });
   await createMeal({ user_id: user2.user_id, type: "snack" });
 
-  const res = await getFollowingMeals(user3.user_id);
-
+  const res = await getFollowingMeals({ user_id: user3.user_id });
   expect(res.data.getFollowingMeals).toHaveLength(2);
 });
 
@@ -526,4 +579,119 @@ it("update meal scalar data", async () => {
   expect(meal?.photo).toEqual("http://bs.com");
   expect(meal?.steps).toEqual("3steps");
   expect(meal?.prep_time).toEqual(123);
+});
+
+it("paginate getUserMeals using time", async () => {
+  const N = 15;
+  const email = "email@email.com";
+  const user = await addUser(email);
+  for (let i = 0; i < N; i++)
+    await createMeal({ user_id: user.user_id, prep_time: 60 * i + 10 });
+
+  let meals = await getUserMeals({ email });
+  expect(meals.data.getUserMeals).toHaveLength(10);
+
+  meals = await getUserMeals({ email, page: 1 });
+  expect(meals.data.getUserMeals).toHaveLength(N - 10);
+
+  meals = await getUserMeals({ email, page: 2 });
+  expect(meals.data.getUserMeals).toHaveLength(0);
+});
+
+it("paginate getUserMeals using likes", async () => {
+  const N = 15;
+  const email = "email@email.com";
+  const user = await addUser(email);
+  const userIds = [];
+  for (let i = 0; i < N; i++) {
+    await createMeal({ user_id: user.user_id });
+    const { user_id } = await addUser(`email${i}@email.com`);
+    userIds.push(user_id);
+  }
+
+  const meals = await Meal.find();
+  for (let i = 0; i < N; i++)
+    for (let j = 0; j <= i; j++)
+      await addLike({ meal_id: meals[i].meal_id, user_id: userIds[j] });
+
+  let res = await getUserMeals({ email, likes: true });
+  expect(res.data.getUserMeals).toHaveLength(10);
+  expect(res.data.getUserMeals[0].likesCount).toBe(N);
+  expect(res.data.getUserMeals[9].likesCount).toBe(N - 9);
+
+  res = await getUserMeals({ email, page: 1, likes: true });
+  expect(res.data.getUserMeals).toHaveLength(N - 10);
+  expect(res.data.getUserMeals[0].likesCount).toBe(N - 10);
+  expect(res.data.getUserMeals[N - 11].likesCount).toBe(1);
+
+  res = await getUserMeals({ email, page: 2, likes: true });
+  expect(res.data.getUserMeals).toHaveLength(0);
+});
+
+it("paginate getFollowingMeals using time", async () => {
+  const M = 15,
+    N = 5;
+  const user1 = await addUser("email1@email.com");
+  for (let i = 0; i < N; i++)
+    await createMeal({ name: "user1", user_id: user1.user_id });
+
+  const user2 = await addUser("email2@email.com");
+  for (let i = 0; i < M; i++)
+    await createMeal({ name: "user2", user_id: user2.user_id });
+
+  await follow({ user_id: user1.user_id, email: user2.email });
+
+  let meals = await getFollowingMeals({ user_id: user1.user_id });
+  expect(meals.data.getFollowingMeals).toHaveLength(10);
+  expect(meals.data.getFollowingMeals[0].name).toBe("user2");
+
+  meals = await getFollowingMeals({ user_id: user1.user_id, page: 1 });
+  expect(meals.data.getFollowingMeals).toHaveLength(M - 10);
+  expect(meals.data.getFollowingMeals[0].name).toBe("user2");
+
+  meals = await getFollowingMeals({ user_id: user1.user_id, page: 2 });
+  expect(meals.data.getFollowingMeals).toHaveLength(0);
+});
+
+it("paginate getFollowingMeals using likes", async () => {
+  const N = 15;
+  const user = await addUser("email@email.com");
+  const userIds = [];
+  for (let i = 0; i < N; i++) {
+    await createMeal({ name: "user1", user_id: user.user_id });
+    const { user_id } = await addUser(`email${i}@email.com`);
+    userIds.push(user_id);
+  }
+
+  const user2 = await addUser("emai@email.com");
+  for (let i = 0; i < 5; i++)
+    await createMeal({ name: "user2", user_id: user2.user_id });
+
+  await follow({ user_id: user2.user_id, email: user.email });
+
+  const meals = await Meal.find();
+  for (let i = 0; i < N; i++)
+    for (let j = 0; j <= i; j++)
+      await addLike({ meal_id: meals[i].meal_id, user_id: userIds[j] });
+
+  let res = await getFollowingMeals({ user_id: user2.user_id, likes: true });
+  expect(res.data.getFollowingMeals).toHaveLength(10);
+  expect(res.data.getFollowingMeals[0].likesCount).toBe(N);
+  expect(res.data.getFollowingMeals[9].likesCount).toBe(N - 9);
+
+  res = await getFollowingMeals({
+    user_id: user2.user_id,
+    likes: true,
+    page: 1,
+  });
+  expect(res.data.getFollowingMeals).toHaveLength(N - 10);
+  expect(res.data.getFollowingMeals[0].likesCount).toBe(N - 10);
+  expect(res.data.getFollowingMeals[N - 11].likesCount).toBe(1);
+
+  res = await getFollowingMeals({
+    user_id: user2.user_id,
+    likes: true,
+    page: 2,
+  });
+  expect(res.data.getFollowingMeals).toHaveLength(0);
 });

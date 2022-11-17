@@ -3,6 +3,7 @@ import { currentUser } from "../middlewares/current-user";
 import {
   Arg,
   Ctx,
+  Int,
   Mutation,
   Query,
   Resolver,
@@ -10,7 +11,6 @@ import {
 } from "type-graphql";
 import Context from "../context";
 import Ingredient from "../entity/ingredient";
-import User from "../entity/user";
 import MealFilter from "./types/meal/meal-filter";
 import CreateMealData from "./types/meal/create-meal-data";
 import MealTags from "../entity/meal-tags";
@@ -18,40 +18,75 @@ import { getConnection, QueryRunner } from "typeorm";
 import MealIngredients from "../entity/meal-ingredients";
 import { UpdateMealData } from "./types/meal/update-meal-data";
 import IngredientFactor from "./types/meal/ingredient-factor";
-import Follow from "../entity/follow";
 
-//todo: pagination
+const PAGE_SIZE = 10;
+
 @Resolver()
 export default class MealResolver {
   @Query(() => [Meal])
-  async getUserMeals(@Arg("email", () => String) email: string) {
-    return (
-      await User.findOne(
-        { email },
-        { relations: ["meals"], select: ["user_id"] }
-      )
-    )?.meals;
+  async getUserMeals(
+    @Arg("email", () => String) email: string,
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number,
+    @Arg("likes", () => Boolean, {
+      defaultValue: false,
+      description: "order by likes desc",
+    })
+    likes: boolean
+  ) {
+    if (!page) page = 0;
+
+    let query = getConnection()
+      .createQueryBuilder()
+      .select("meal")
+      .from(Meal, "meal")
+      .leftJoin("meal.user", "user", "user.email = :email", { email });
+
+    if (likes) query = query.orderBy("meal.likesCount", "DESC");
+    else query = query.orderBy("meal.createdDate", "DESC");
+
+    query = query.skip(PAGE_SIZE * page).take(PAGE_SIZE);
+
+    return await query.getMany();
   }
 
-  @Query(() => [User])
+  @Query(() => [Meal])
   @UseMiddleware(currentUser)
-  async getFollowingMeals(@Ctx() { user_id }: Context) {
-    const followingMeals = await getConnection()
+  async getFollowingMeals(
+    @Ctx() { user_id }: Context,
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number,
+    @Arg("likes", () => Boolean, {
+      defaultValue: false,
+      description: "order by likes desc",
+    })
+    likes: boolean
+  ) {
+    let query = getConnection()
       .createQueryBuilder()
-      .select("follow.user_id")
-      .from(Follow, "follow")
-      .innerJoinAndSelect("follow.user", "user")
-      .leftJoinAndSelect("user.meals", "meal")
-      .where("follower_id = :user_id", { user_id })
-      .getMany();
+      .select("meal")
+      .from(Meal, "meal")
+      .leftJoin("meal.user", "user")
+      .innerJoin("user.followers", "follow", "follow.follower_id = :user_id", {
+        user_id,
+      });
 
-    return followingMeals.map((v) => v.user);
+    if (likes) query = query.orderBy("meal.likesCount", "DESC");
+    else query = query.orderBy("meal.createdDate", "DESC");
+
+    query = query.skip(PAGE_SIZE * page).take(PAGE_SIZE);
+
+    return await query.getMany();
   }
 
   @Query(() => [Meal])
   @UseMiddleware(currentUser)
   async filterMeals(
     @Arg("filter", () => MealFilter) filter: MealFilter,
+    @Arg("page", () => Int, { defaultValue: 0 }) page: number,
+    @Arg("likes", () => Boolean, {
+      defaultValue: false,
+      description: "order by likes desc",
+    })
+    likes: boolean,
     @Ctx() { user_id }: Context
   ) {
     let query = getConnection()
@@ -136,6 +171,11 @@ export default class MealResolver {
       query = query
         .where("meal.prep_time >= :start", { start: filter.prep_time.start })
         .andWhere("meal.prep_time <= :end", { end: filter.prep_time.end });
+
+    if (likes) query = query.orderBy("meal.likesCount", "DESC");
+    else query = query.orderBy("meal.createdDate", "DESC");
+
+    query = query.skip(PAGE_SIZE * page).take(PAGE_SIZE);
 
     return await query.getMany();
   }
